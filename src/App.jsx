@@ -1,10 +1,12 @@
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+
 import LoginPage from './features/auth/LoginPage';
 import MainLayout from './components/Layout/MainLayout';
 
-// Sales & Admin (Tạm thời comment để không lỗi cho đến khi bạn Git Pull xong)
-// import CustomerList from './features/sales/CustomerList';
-// import OrderManager from './features/admin/pages/OrderManagement';
+// Sales & Admin (Từ GitHub - Đã Pull về)
+import CustomerList from './features/sales/CustomerList';
+import OrderManager from './features/admin/pages/OrderManagement';
 
 // Kế toán (Accounting Module - Phát triển cục bộ)
 import AccountingDashboard from './features/accounting/dashboard/index.jsx';
@@ -21,11 +23,14 @@ function App() {
     <Routes>
       <Route path="/" element={<LoginPage />} />
       
-      {/* Tuyến đường Sales & Admin (Tạm thời dùng Placeholder) */}
+      {/* Tuyến đường Sales & Admin sử dụng MainLayout (Cấu trúc mới từ GitHub) */}
       <Route path="/home" element={<MainLayout />}>
+        {/* Đường dẫn mặc định khi vào /home */}
         <Route index element={<div className="p-4">Đây là trang Dashboard tổng quan</div>} />
-        <Route path="customers" element={<div className="p-4 text-acc-text-muted italic">Đang chờ Pull dữ liệu Sales từ GitHub...</div>} />
-        <Route path="orders" element={<div className="p-4 text-acc-text-muted italic">Đang chờ Pull dữ liệu Admin từ GitHub...</div>} />
+        
+        {/* Tuyến đường con: /home/customers và /home/orders */}
+        <Route path="customers" element={<CustomerList />} />
+        <Route path="orders" element={<OrderManager />} />
       </Route>
       
       {/* Tuyến đường Kế toán sử dụng AccountingLayout (Phát triển cục bộ) */}
