@@ -100,7 +100,7 @@ src/
 ### 4. Module Kế toán
 | Chức năng | Trạng thái |
 |---|---|
-| ✅ Quản lý Hóa đơn Bán hàng | |
+| ✅ Quản lý Hóa đơn Bán hàng | |   
 | ✅ Xác nhận Thanh toán | |
 | ✅ Quản lý Công nợ | |
 | ✅ Báo cáo Doanh thu & Kế toán | |
@@ -171,48 +171,6 @@ src/
 | `PUT` | `/api/users/{id}` | Cập nhật thông tin & Phân quyền |
 | `GET` | `/api/roles` | Danh sách vai trò hệ thống |
 
----
-
-## 🚀 Roadmap thực hiện
-### Giai đoạn 1: Cơ sở hạ tầng (1-2 ngày)
-- [ ] Cài đặt tất cả dependencies
-- [ ] Thiết lập Redux Toolkit
-- [ ] Thiết lập Router và phân quyền
-- [ ] Tạo Layout chính (Sidebar, Header)
-- [ ] Tạo Components cơ bản (Table, Form, Modal)
-- [ ] Cấu hình Axios interceptor
-
-### Giai đoạn 2: Module Quản trị viên (2 ngày)
-- [ ] Đăng nhập / Đăng xuất
-- [ ] Quản lý Người dùng & Phân quyền
-- [ ] Quản lý Danh mục & Sản phẩm
-- [ ] Quản lý Bảng giá
-- [ ] Dashboard Tổng quan
-
-### Giai đoạn 3: Module Kinh doanh (2 ngày)
-- [ ] Quản lý Khách hàng
-- [ ] Quản lý Báo giá
-- [ ] Quản lý Đơn hàng
-- [ ] Báo cáo bán hàng cá nhân
-
-### Giai đoạn 4: Module Kho hàng (2 ngày)
-- [ ] Quản lý Lệnh giao hàng
-- [ ] Cập nhật trạng thái giao hàng
-- [ ] Nhập kho
-- [ ] Báo cáo tồn kho
-
-### Giai đoạn 5: Module Kế toán (2 ngày)
-- [ ] Quản lý Hóa đơn
-- [ ] Xác nhận thanh toán
-- [ ] Quản lý công nợ
-- [ ] Báo cáo kế toán & xuất file
-
-### Giai đoạn 6: Hoàn thiện & Testing (1 ngày)
-- [ ] Responsive design
-- [ ] Validate form
-- [ ] Error handling
-- [ ] Performance optimization
-- [ ] Testing end to end
 
 ---
 
