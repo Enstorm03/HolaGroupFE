@@ -1,4 +1,5 @@
 import React from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom'
 
 const LoginPage = () => {
@@ -100,7 +101,7 @@ const LoginPage = () => {
 
             <button 
               onClick={handleLogin}
-      
+
               type="button" 
               // Gradient nút bấm theo dải màu của logo
               className="w-full p-4 bg-gradient-to-r from-[#E31E63] via-[#F26722] to-[#F4B324] text-white border-none rounded-lg text-[18px] font-semibold cursor-pointer transition-all duration-300 hover:opacity-90 shadow-lg shadow-orange-500/30"

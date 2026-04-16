@@ -22,6 +22,7 @@ const MainLayout = ({ children }) => {
           {/* Khu vực render nội dung của từng trang riêng biệt (children) */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1">
             {children}
+            
           </div>
 
           <Footer />
