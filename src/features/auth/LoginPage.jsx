@@ -17,24 +17,31 @@ const LoginPage = () => {
           </p>
           
           <div className="grid grid-cols-2 gap-4">
-            {/* Tăng độ tương phản cho các box bên trong nền màu sáng */}
-            <div className="bg-white/10 p-6 rounded-lg backdrop-blur-sm border border-white/20">
-              <div className="w-10 h-10 bg-white/30 rounded mb-3"></div> {/* Icon placeholder */}
+            <div className="bg-white/5 p-6 rounded-lg backdrop-blur-md border border-white/10 flex flex-col items-center text-center">
+            <div className="w-12 h-12 mb-3 rounded-xl overflow-hidden flex items-center justify-center">
+            <img src="/image/1.png" alt="Admin" className="w-full h-full object-cover scale-110 object-center" />
+            </div>
               <h3 className="font-manrope text-base font-semibold mb-1">Admin</h3>
               <p className="text-xs opacity-80">Quản trị hệ thống & Bảo mật</p>
             </div>
-            <div className="bg-white/10 p-6 rounded-lg backdrop-blur-sm border border-white/20">
-              <div className="w-10 h-10 bg-white/30 rounded mb-3"></div>
+            <div className="bg-white/5 p-6 rounded-lg backdrop-blur-md border border-white/10 flex flex-col items-center text-center">
+              <div className="w-12 h-12 mb-3 rounded-xl overflow-hidden flex items-center justify-center">
+            <img src="/image/2.png" alt="Admin" className="w-full h-full object-cover scale-110 object-center" />
+            </div>
               <h3 className="font-manrope text-base font-semibold mb-1">Sales</h3>
               <p className="text-xs opacity-80">Kinh doanh & Khách hàng</p>
             </div>
-            <div className="bg-white/10 p-6 rounded-lg backdrop-blur-sm border border-white/20">
-              <div className="w-10 h-10 bg-white/30 rounded mb-3"></div>
+            <div className="bg-white/5 p-6 rounded-lg backdrop-blur-md border border-white/10 flex flex-col items-center text-center">
+              <div className="w-12 h-12 mb-3 rounded-xl overflow-hidden flex items-center justify-center">
+            <img src="/image/3.png" alt="Admin" className="w-full h-full object-cover scale-110 object-center" />
+            </div>
               <h3 className="font-manrope text-base font-semibold mb-1">Warehouse</h3>
               <p className="text-xs opacity-80">Kho vận & Logistic</p>
             </div>
-            <div className="bg-white/10 p-6 rounded-lg backdrop-blur-sm border border-white/20">
-              <div className="w-10 h-10 bg-white/30 rounded mb-3"></div>
+            <div className="bg-white/5 p-6 rounded-lg backdrop-blur-md border border-white/10 flex flex-col items-center text-center">
+              <div className="w-12 h-12 mb-3 rounded-xl overflow-hidden flex items-center justify-center">
+            <img src="/image/4.png" alt="Admin" className="w-full h-full object-cover scale-110 object-center" />
+            </div>
               <h3 className="font-manrope text-base font-semibold mb-1">Accounting</h3>
               <p className="text-xs opacity-80">Kế toán & Tài chính</p>
             </div>
