@@ -24,9 +24,9 @@ const Sidebar = () => {
         
         {/* Nút bấm chuyển sang trang Khách hàng (Sales) */}
         <Link 
-          to="/customers" 
+          to="/home/customers" 
           className={`block px-4 py-3 rounded-lg font-medium transition-colors ${
-            location.pathname === '/customers' ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+            location.pathname === '/home/customers' ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
           }`}
         >
           💼 Sales (Khách hàng)
