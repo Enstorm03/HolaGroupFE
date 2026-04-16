@@ -4,6 +4,7 @@ import { Routes, Route } from 'react-router-dom';
 import LoginPage from './features/auth/LoginPage';
 import MainLayout from './components/layout/MainLayout';
 import CustomerList from './features/sales/CustomerList';
+import OrderManager from './features/admin/pages/OrderManagement'
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
         
         {/* Tuyến đường con: /home/customers */}
         <Route path="customers" element={<CustomerList />} />
+        <Route path="orders" element={<OrderManager />} />
 
       </Route>
     </Routes>

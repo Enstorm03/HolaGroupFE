@@ -33,8 +33,12 @@ const Sidebar = () => {
         </Link>
 
         {/* Các menu khác tạm thời trỏ về # hoặc các route bạn sẽ tạo sau */}
-        <Link to="#" className="block px-4 py-3 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors">
-          🛡️ Admin
+        <Link to="/home/orders"
+          className={`block px-4 py-3 rounded-lg font-medium transition-colors ${
+            location.pathname === '/home/order' ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          🛡️ order
         </Link>
         <Link to="#" className="block px-4 py-3 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition-colors">
           📦 Warehouse
