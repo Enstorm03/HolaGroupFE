@@ -1,8 +1,14 @@
-import React from 'react';
-// import msIcon from '../../assets/ms-icon.png';
-// import googleIcon from '../../assets/google-icon.png';
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const LoginPage = () => {
+  const navigate = useNavigate()
+
+  const handleLogin = () => {
+    navigate('/home')
+  }
+
+ 
   return (
     <div className="flex h-screen w-full font-sans bg-[#f7f9fb]">
       {/* Nửa bên trái - Thông tin giới thiệu */}
@@ -93,6 +99,8 @@ const LoginPage = () => {
             </div>
 
             <button 
+              onClick={handleLogin}
+      
               type="button" 
               // Gradient nút bấm theo dải màu của logo
               className="w-full p-4 bg-gradient-to-r from-[#E31E63] via-[#F26722] to-[#F4B324] text-white border-none rounded-lg text-[18px] font-semibold cursor-pointer transition-all duration-300 hover:opacity-90 shadow-lg shadow-orange-500/30"
