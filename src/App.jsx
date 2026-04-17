@@ -2,50 +2,46 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 import LoginPage from './features/auth/LoginPage';
-import MainLayout from './components/layout/MainLayout';
+import MainLayout from './components/Layout/MainLayout';
+
+// Sales & Admin (Từ GitHub - Đã Pull về)
 import CustomerList from './features/sales/CustomerList';
-import OrderManager from './features/admin/pages/OrderManagement'
+import OrderManager from './features/admin/pages/OrderManagement';
+
+// Kế toán (Accounting Module - Phát triển cục bộ)
+import AccountingDashboard from './features/accounting/dashboard/index.jsx';
+import InvoiceList from './features/accounting/invoices/index.jsx';
+import InvoiceDetail from './features/accounting/invoices/invoice_details.jsx';
+import DebtTracker from './features/accounting/debts/index.jsx';
+import PaymentList from './features/accounting/payments/index.jsx';
+import PaymentDetail from './features/accounting/payments/detail.jsx';
+import AccountingReport from './features/accounting/reports/accounting/index.jsx';
+import AccountingLayout from './features/accounting/components/AccountingLayout';
 
 function App() {
   return (
-    // <Routes>
-    //   {/* Trang Đăng nhập */}
-    //   <Route path="/" element={<LoginPage />} />
-
-    //   {/* Trang chủ (có thể để trống hoặc làm một trang Dashboard riêng sau) */}
-    //   <Route 
-    //     path="/home" 
-    //     element={
-    //       <MainLayout>
-    //         <div className="p-4">Đây là trang Dashboard tổng quan</div>
-    //       </MainLayout>
-          
-    //     } 
-    //   />
-
-    //   {/* THÊM DÒNG NÀY: Khai báo đường dẫn cho trang Khách hàng */}
-    //   <Route 
-    //     path="/home/customers" 
-    //     element={
-    //       <MainLayout>
-    //         <CustomerList />
-    //       </MainLayout>
-    //     } 
-    //   />
-    // </Routes>
     <Routes>
       <Route path="/" element={<LoginPage />} />
-
-      {/* Tuyến đường cha: /home. Bất cứ đường dẫn nào bắt đầu bằng /home đều sẽ có MainLayout */}
+      
+      {/* Tuyến đường Sales & Admin sử dụng MainLayout (Cấu trúc mới từ GitHub) */}
       <Route path="/home" element={<MainLayout />}>
-        
-        {/* Đường dẫn mặc định khi vào /home (thường gọi là index) */}
+        {/* Đường dẫn mặc định khi vào /home */}
         <Route index element={<div className="p-4">Đây là trang Dashboard tổng quan</div>} />
         
-        {/* Tuyến đường con: /home/customers */}
+        {/* Tuyến đường con: /home/customers và /home/orders */}
         <Route path="customers" element={<CustomerList />} />
         <Route path="orders" element={<OrderManager />} />
-
+      </Route>
+      
+      {/* Tuyến đường Kế toán sử dụng AccountingLayout (Phát triển cục bộ) */}
+      <Route element={<AccountingLayout />}>
+        <Route path="/dashboard" element={<AccountingDashboard />} />
+        <Route path="/sales-invoices" element={<InvoiceList />} />
+        <Route path="/sales-invoices/detail" element={<InvoiceDetail />} />
+        <Route path="/debts" element={<DebtTracker />} />
+        <Route path="/payments" element={<PaymentList />} />
+        <Route path="/payments/detail" element={<PaymentDetail />} />
+        <Route path="/reports" element={<AccountingReport />} />
       </Route>
     </Routes>
   );
