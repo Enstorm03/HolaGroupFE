@@ -3,15 +3,15 @@ import { NavLink } from 'react-router-dom';
 import { 
   DashboardIcon, InvoiceIcon, RevenueIcon, DebtIcon, 
   ChartIcon, SettingsIcon, LogoutIcon 
-} from './Icons/AccountingIcons';
+} from '../Icons/AccountingIcons';
 
 const AccountingSidebar = () => {
   const menuItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: DashboardIcon },
-    { name: 'Hóa đơn Sales', path: '/sales-invoices', icon: InvoiceIcon },
-    { name: 'Thanh toán khách', path: '/payments', icon: RevenueIcon },
-    { name: 'Quản lý Công nợ', path: '/debts', icon: DebtIcon },
-    { name: 'Báo cáo Tài chính', path: '/reports', icon: ChartIcon },
+    { name: 'Dashboard', path: '/accounting', icon: DashboardIcon },
+    { name: 'Hóa đơn Sales', path: '/accounting/sales-invoices', icon: InvoiceIcon },
+    { name: 'Thanh toán khách', path: '/accounting/payments', icon: RevenueIcon },
+    { name: 'Quản lý Công nợ', path: '/accounting/debts', icon: DebtIcon },
+    { name: 'Báo cáo Tài chính', path: '/accounting/reports', icon: ChartIcon },
   ];
 
   return (
@@ -19,14 +19,23 @@ const AccountingSidebar = () => {
       {/* Brand area */}
       <div className="relative overflow-hidden" style={{ padding: 'var(--space-xxl) var(--space-lg)' }}>
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20 shadow-inner">
-            <ChartIcon className="text-white text-2xl" />
+        <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20 shadow-inner">
+              <ChartIcon className="text-white text-2xl" />
+            </div>
+            <div>
+              <h2 className="text-white font-black text-xl tracking-tighter leading-none mb-1">HOLAGROUP</h2>
+              <p className="text-blue-200/60 text-label-xs">Accounting Module</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-white font-black text-xl tracking-tighter leading-none mb-1">HOLAGROUP</h2>
-            <p className="text-blue-200/60 text-label-xs">Accounting Module</p>
-          </div>
+          <NavLink 
+            to="/home" 
+            className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center text-white transition-all shadow-lg"
+            title="Quay lại Trang chủ"
+          >
+            <span className="material-symbols-outlined text-xl">home</span>
+          </NavLink>
         </div>
       </div>
 
@@ -36,6 +45,7 @@ const AccountingSidebar = () => {
           <NavLink
             key={item.path}
             to={item.path}
+            end={item.path === '/accounting'}
             className={({ isActive }) => `
               group flex items-center gap-4 rounded-2xl transition-all duration-300 relative overflow-hidden
               ${isActive 
@@ -49,6 +59,19 @@ const AccountingSidebar = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
           </NavLink>
         ))}
+
+        {/* Nút quay lại hệ thống chính */}
+        <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-lg)', borderTop: '0.0625rem solid rgba(255,255,255,0.1)' }}>
+          <NavLink
+            to="/home"
+            className="group flex items-center gap-4 rounded-2xl transition-all duration-300 relative overflow-hidden text-blue-100/70 hover:bg-amber-400 hover:text-black"
+            style={{ padding: 'var(--space-base) var(--space-lg)' }}
+          >
+            <span className="material-symbols-outlined text-xl transition-transform duration-500 group-hover:-translate-x-1">arrow_back_ios</span>
+            <span className="text-body-base font-bold">Hệ thống Sales</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+          </NavLink>
+        </div>
       </nav>
 
       {/* User & Action area */}
