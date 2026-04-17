@@ -16,7 +16,8 @@ import DebtTracker from './features/accounting/debts/index.jsx';
 import PaymentList from './features/accounting/payments/index.jsx';
 import PaymentDetail from './features/accounting/payments/detail.jsx';
 import AccountingReport from './features/accounting/reports/accounting/index.jsx';
-import AccountingLayout from './features/accounting/components/AccountingLayout';
+import AccountingLayout from './features/accounting/components/Layout/AccountingLayout';
+import TransactionDetail from './features/accounting/dashboard/TransactionDetail.jsx';
 
 function App() {
   return (
@@ -34,14 +35,15 @@ function App() {
       </Route>
       
       {/* Tuyến đường Kế toán sử dụng AccountingLayout (Phát triển cục bộ) */}
-      <Route element={<AccountingLayout />}>
-        <Route path="/dashboard" element={<AccountingDashboard />} />
-        <Route path="/sales-invoices" element={<InvoiceList />} />
-        <Route path="/sales-invoices/detail" element={<InvoiceDetail />} />
-        <Route path="/debts" element={<DebtTracker />} />
-        <Route path="/payments" element={<PaymentList />} />
-        <Route path="/payments/detail" element={<PaymentDetail />} />
-        <Route path="/reports" element={<AccountingReport />} />
+      <Route path="/accounting" element={<AccountingLayout />}>
+        <Route index element={<AccountingDashboard />} />
+        <Route path="sales-invoices" element={<InvoiceList />} />
+        <Route path="sales-invoices/detail" element={<InvoiceDetail />} />
+        <Route path="debts" element={<DebtTracker />} />
+        <Route path="payments" element={<PaymentList />} />
+        <Route path="payments/detail" element={<PaymentDetail />} />
+        <Route path="reports" element={<AccountingReport />} />
+        <Route path="transaction/:id" element={<TransactionDetail />} />
       </Route>
     </Routes>
   );

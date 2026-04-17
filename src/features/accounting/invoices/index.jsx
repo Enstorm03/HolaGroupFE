@@ -25,15 +25,15 @@ const InvoiceList = () => {
   }, []);
 
   return (
-    <div className="space-y-6 animate-fade-up" style={{ paddingBottom: 'var(--space-xl)' }}>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="flex-1 flex flex-col min-h-0 w-full animate-fade-up" style={{ gap: 'var(--space-lg)' }}>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0 px-1">
         <div className="space-y-1">
-          <h1 className="text-display-sm text-acc-text-main">Hóa đơn Bán hàng</h1>
-          <p className="text-body-sm text-acc-text-muted">Quản lý và theo dõi danh sách hóa đơn từ đơn hàng</p>
+          <h1 className="text-acc-text-main leading-tight font-black" style={{ fontSize: '2rem' }}>Hóa đơn Bán hàng</h1>
+          <p className="text-base text-acc-text-muted font-medium">Quản lý và theo dõi danh sách hóa đơn từ đơn hàng</p>
         </div>
         <button className="acc-btn-primary group shadow-lg shadow-blue-800/10 text-label-xs py-2.5">
           <span className="material-symbols-outlined text-lg">add</span>
-          Tạo hóa đơn từ Đơn hàng
+          Tạo hóa đơn
         </button>
       </div>
 
@@ -45,10 +45,10 @@ const InvoiceList = () => {
       )}
 
       {/* Invoices Table */}
-      <div className="acc-card overflow-hidden border-none shadow-float">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50/80 border-b border-slate-100">
+      <div className="acc-card flex-1 min-h-0 flex flex-col overflow-hidden border-none shadow-float">
+        <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-slate-200">
+          <table className="w-full text-left border-collapse relative">
+            <thead className="bg-slate-50/80 border-b border-slate-100 sticky top-0 z-10 backdrop-blur-md">
               <tr>
                 <th className="text-label-xs text-acc-text-muted" style={{ padding: 'var(--space-md) var(--space-xl)' }}>Mã Đơn hàng/HĐ</th>
                 <th className="text-label-xs text-acc-text-muted" style={{ padding: 'var(--space-md) var(--space-xl)' }}>Khách hàng</th>

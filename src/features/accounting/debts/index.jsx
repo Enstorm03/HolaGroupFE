@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useToast } from '../components/AccountingToast';
+import { useToast } from '../components/Common/AccountingToast';
 import accountingService from '../services/accountingService';
 import DebtTable from '../components/Tables/DebtTable';
 import '../styles/accounting.css';
@@ -31,11 +31,11 @@ const DebtTracker = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-up" style={{ paddingBottom: 'var(--space-xl)' }}>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="flex-1 flex flex-col min-h-0 w-full animate-fade-up" style={{ gap: 'var(--space-lg)' }}>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0 px-1">
         <div className="space-y-1">
-          <h1 className="text-display-sm text-acc-text-main">Quản lý Công nợ</h1>
-          <p className="text-body-sm text-acc-text-muted">Theo dõi và nhắc nhở khách hàng về các khoản nợ quá hạn.</p>
+          <h1 className="text-acc-text-main leading-tight font-black" style={{ fontSize: '2rem' }}>Quản lý Công nợ</h1>
+          <p className="text-base text-acc-text-muted font-medium">Theo dõi và nhắc nhở khách hàng về các khoản nợ quá hạn.</p>
         </div>
       </div>
 
@@ -73,13 +73,15 @@ const DebtTracker = () => {
       </div>
 
       {/* Table Section */}
-      <div className="acc-card min-h-[400px]" style={{ padding: 'var(--space-lg)' }}>
-        <h3 className="text-label-xs text-acc-text-main" style={{ marginBottom: 'var(--space-lg)' }}>Chi tiết nợ từng khách hàng</h3>
-        <DebtTable 
-          debts={debts}
-          loading={loading}
-          onReminder={handleReminder}
-        />
+      <div className="acc-card flex-1 min-h-0 flex flex-col overflow-hidden" style={{ padding: 'var(--space-lg)' }}>
+        <h3 className="text-label-xs text-acc-text-main shrink-0" style={{ marginBottom: 'var(--space-md)' }}>Chi tiết nợ từng khách hàng</h3>
+        <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-slate-200">
+          <DebtTable 
+            debts={debts}
+            loading={loading}
+            onReminder={handleReminder}
+          />
+        </div>
       </div>
     </div>
   );
