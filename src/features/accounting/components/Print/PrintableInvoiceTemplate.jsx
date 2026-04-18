@@ -61,18 +61,15 @@ const PrintableInvoiceTemplate = ({ detail, extendedData = null }) => {
               display: none !important;
             }
             
-            /* 2. Hiển thị khu vực in với lề tối ưu 1 trang */
+            /* 2. Hiển thị khu vực in với lề tối ưu */
             #printable-area {
               display: block !important;
               width: 100% !important;
-              max-width: 210mm !important;
-              min-height: 297mm !important;
-              padding: 10mm !important;
+              padding: 15mm !important;
               margin: 0 auto !important;
               background: white !important;
               visibility: visible !important;
               position: relative !important;
-              page-break-inside: avoid;
             }
 
             /* 3. Đảm bảo mọi thứ bên trong đều hiển thị */
@@ -82,8 +79,9 @@ const PrintableInvoiceTemplate = ({ detail, extendedData = null }) => {
             }
             
             @page {
-              size: A4;
-              margin: 0;
+              /* Không ép cứng A4 để trình duyệt hiển thị menu chọn Khổ giấy (Paper Size) */
+              size: auto; 
+              margin: 5mm;
             }
           }
         `}
@@ -93,7 +91,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData = null }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '3px solid #00288E', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
            <div style={{ width: '3rem', height: '3rem', backgroundColor: '#00288E', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '900', fontSize: '1.5rem' }}>H</div>
-           <div>
+           <div style={{ textAlign: 'left' }}>
               <h1 style={{ margin: 0, color: '#00288E', fontSize: '1.5rem', fontWeight: '900', letterSpacing: '-0.02em' }}>HOLAGROUP</h1>
               <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Tài chính Toàn cầu</p>
            </div>
@@ -111,7 +109,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData = null }) => {
 
       {/* THÔNG TIN CHUNG: Giảm khoảng cách */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem', marginBottom: '1.5rem' }}>
-         <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1rem' }}>
+         <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '1rem', textAlign: 'left' }}>
             <p style={{ fontSize: '0.6rem', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Đơn vị phát hành</p>
             <p style={{ fontWeight: '800', fontSize: '1rem', color: '#0f172a', margin: '0' }}>CÔNG TY CP TẬP ĐOÀN HOLAGROUP</p>
             <p style={{ fontSize: '0.75rem', color: '#475569', margin: 0 }}>Quận 1, TP. Hồ Chí Minh | Website: holagroup.vn</p>
@@ -120,7 +118,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData = null }) => {
              <p style={{ fontSize: '0.6rem', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Xác nhận nghiệp vụ</p>
              <p style={{ fontWeight: '700', fontSize: '0.8rem', color: '#0f172a', margin: 0 }}>Ban quản lý nội bộ</p>
              <div style={{ display: 'inline-flex', padding: '0.25rem 0.75rem', background: '#ecfdf5', color: '#059669', fontSize: '0.65rem', fontWeight: '900', borderRadius: '1rem', marginTop: '0.5rem' }}>
-                ĐÃ XÁC THỰC
+                 ĐÃ XÁC THỰC
              </div>
          </div>
       </div>
@@ -140,7 +138,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData = null }) => {
                   <tbody>
                      {extendedData.data?.filter((_, i) => i < 15).map((item, idx) => (
                         <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                           <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.8rem', fontWeight: '700' }}>{item.name}</td>
+                           <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.8rem', fontWeight: '700', textAlign: 'left' }}>{item.name}</td>
                            <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', fontWeight: '900', fontSize: '0.85rem', color: '#00288E' }}>{item.amount}</td>
                            <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '800' }}>{item.status}</td>
                         </tr>
@@ -166,7 +164,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData = null }) => {
                      if (key === 'amount' || key === 'value') return null;
                      const displayLabel = labelMap[key] || key.toUpperCase();
                      return (
-                        <div key={idx} style={{ paddingBottom: '0.5rem', borderBottom: '1px solid #f1f5f9' }}>
+                        <div key={idx} style={{ paddingBottom: '0.5rem', borderBottom: '1px solid #f1f5f9', textAlign: 'left' }}>
                            <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase' }}>{displayLabel}</p>
                            <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.85rem', fontWeight: '800', color: '#0f172a' }}>{String(val)}</p>
                         </div>
@@ -180,7 +178,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData = null }) => {
             <div>
                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
                   {extendedData.data?.summary?.map((item, idx) => (
-                     <div key={idx} style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
+                     <div key={idx} style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '1rem', border: '1px solid #e2e8f0', textAlign: 'left' }}>
                         <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>{item.label}</p>
                         <p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: '900', color: '#0f172a' }}>{item.value}</p>
                      </div>
@@ -190,7 +188,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData = null }) => {
                   <tbody style={{ fontSize: '0.8rem' }}>
                      {extendedData.data?.breakdown?.map((item, idx) => (
                         <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                           <td style={{ padding: '0.75rem', fontWeight: '700' }}>{item.label}</td>
+                           <td style={{ padding: '0.75rem', fontWeight: '700', textAlign: 'left' }}>{item.label}</td>
                            <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '900', color: '#00288E' }}>{item.value}</td>
                         </tr>
                      ))}

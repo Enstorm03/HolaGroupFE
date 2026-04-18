@@ -64,7 +64,7 @@
   border: 0.0625rem solid #cbd5e1; /* Slate-300 */
   border-radius: 1.5rem;
   box-shadow: var(--acc-shadow-elevated);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .acc-card:hover {
@@ -106,7 +106,7 @@
   padding: 0.75rem 1.5rem;
   border-radius: 0.75rem;
   font-weight: 700;
-  transition: all 0.2s;
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -126,12 +126,13 @@
   text-transform: uppercase;
 }
 /* Utility Classes */
-.rounded-2.5xl { border-radius: 1.25rem; }
+.rounded-2\.5xl { border-radius: 1.25rem; }
 .rounded-2xl { border-radius: 1rem; }
 
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;  
   overflow: hidden;
 }
