@@ -39,17 +39,18 @@ export const exportToPDF = async (elementId, filename = 'report.pdf') => {
 
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
-      orientation: 'landscape',
+      orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
     });
 
     const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const marginX = 5; // 5mm side margin
+    const marginTop = 0; // Absolute top
+    const pdfWidth = pdf.internal.pageSize.getWidth() - (marginX * 2);
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-    // Nếu ảnh dài hơn 1 trang, có thể cuộn thêm (tạm thời xử lý fit 1 trang landscape)
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.addImage(imgData, 'PNG', marginX, marginTop, pdfWidth, pdfHeight);
     pdf.save(filename);
     
     return true;

@@ -73,7 +73,11 @@ const mockRevenueData = (timeframe) => {
       const parts = (inv.dueDate || inv.date || "").split('/');
       if (parts.length === 3) {
         const mIdx = parseInt(parts[1]) - 1;
-        if (mIdx >= 0 && mIdx < 12) monthlyData[mIdx].revenue += (inv.totalAmount || 0);
+        if (mIdx >= 0 && mIdx < 12) {
+          // Nếu đã thanh toán hết thì lấy total, nếu một phần thì lấy paidAmount
+          const revenueToAdd = inv.orderStatus === 'Đã thanh toán' ? (inv.totalAmount || 0) : (inv.paidAmount || 0);
+          monthlyData[mIdx].revenue += revenueToAdd;
+        }
       }
     });
     return monthlyData;
@@ -85,7 +89,8 @@ const mockRevenueData = (timeframe) => {
       const parts = (inv.dueDate || inv.date || "").split('/');
       if (parts.length === 3) {
         const year = parts[2];
-        yearlyMap[year] = (yearlyMap[year] || 0) + (inv.totalAmount || 0);
+        const revenueToAdd = inv.orderStatus === 'Đã thanh toán' ? (inv.totalAmount || 0) : (inv.paidAmount || 0);
+        yearlyMap[year] = (yearlyMap[year] || 0) + revenueToAdd;
       }
     });
     // Trộn với data mẫu để biểu đồ có nhiều điểm
@@ -104,9 +109,9 @@ const mockRevenueData = (timeframe) => {
     validInvoices.forEach(inv => {
       const parts = (inv.dueDate || inv.date || "").split('/');
       if (parts.length === 3) {
-        // Mock phân bổ vào thứ trong tuần dựa trên ngày (chỉ để demo vì JS date parsing string VN hơi cực)
         const dIdx = parseInt(parts[0]) % 7; 
-        weeklyData[dIdx].revenue += (inv.totalAmount || 0);
+        const revenueToAdd = inv.orderStatus === 'Đã thanh toán' ? (inv.totalAmount || 0) : (inv.paidAmount || 0);
+        weeklyData[dIdx].revenue += revenueToAdd;
       }
     });
     return weeklyData;
