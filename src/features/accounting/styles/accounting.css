@@ -515,7 +515,11 @@
     max-height: 620px !important; /* Giới hạn hiển thị khoảng 3 card Pro Max */
     overflow-y: auto !important;
     scrollbar-width: none;
+    -ms-overflow-style: none; /* IE and Edge */
     padding-bottom: 0.5rem;
+  }
+  .acc-inner-scroll-mobile::-webkit-scrollbar {
+    display: none; /* Chụp cảnh báo cho Chrome/Safari */
   }
 }
 
@@ -524,6 +528,13 @@
     max-height: 245px !important; /* Giới hạn hiển thị khoảng 3 dòng table */
     overflow-y: auto !important;
     scrollbar-width: thin;
+  }
+  .acc-inner-scroll-mobile::-webkit-scrollbar {
+    width: 6px;
+  }
+  .acc-inner-scroll-mobile::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
   }
 }
 
@@ -568,7 +579,6 @@
     flex: 1 !important;
     min-height: 0 !important;
     padding-bottom: 160px !important;
-    -webkit-overflow-scrolling: touch !important;
     overscroll-behavior: contain !important;
   }
 
@@ -585,8 +595,8 @@
     right: 0 !important;
     z-index: 100 !important;
     background: rgba(255, 255, 255, 0.9) !important;
-    backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
+    backdrop-filter: blur(20px) !important;
     padding: 1rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 16px)) !important;
     box-shadow: 0 -15px 35px rgba(0, 0, 0, 0.08) !important;
     border-top: 1px solid #f1f5f9 !important;

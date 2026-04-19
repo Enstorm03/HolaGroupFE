@@ -248,6 +248,13 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
               </button>
             </div>
           </div>
+
+          {/* Cung cấp phôi in ẩn cho trình duyệt (Printable area) */}
+          <PrintableInvoiceTemplate
+            detail={invoice}
+            extendedData={{ type: 'INVOICE' }}
+          />
+
         </div>
       </div>
     </div>,
