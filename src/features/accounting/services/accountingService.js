@@ -19,9 +19,33 @@ const mockDashboardStats = () => {
   const sourceStats  = dbData.revenue_report?.stats  || dbData.stats  || {};
   const sourceNotifs = dbData.revenue_report?.notifications || dbData.notifications || [];
 
+  // ─── Đồng bộ dữ liệu thực tế từ Invoice List ───
+  const localInvoices = JSON.parse(localStorage.getItem('added_invoices') || '[]');
+  const allInvoices = [...localInvoices, ...(dbData.invoices || [])];
+
+  // 1. Tính Tổng Doanh thu (Tổng tất cả giá trị hóa đơn)
+  const totalRev = allInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+  
+  // 2. Tính Tổng Công nợ (Các hóa đơn chưa 'Đã thanh toán')
+  const totalDebt = allInvoices
+    .filter(inv => inv.orderStatus !== 'Đã thanh toán')
+    .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+    
+  // 3. Đếm số hóa đơn chờ xử lý
+  const pendingCount = allInvoices.filter(inv => 
+    inv.orderStatus === 'Chờ thanh toán' || 
+    inv.orderStatus === 'Thanh toán một phần' || 
+    inv.orderStatus === 'Quá hạn'
+  ).length;
+
   return {
-    // flat: component dùng stats.totalRevenue, stats.totalDebt, ...
     ...sourceStats,
+    // Ghi đè các chỉ số bằng dữ liệu tính toán thực tế
+    totalRevenue: totalRev.toLocaleString('vi-VN'),
+    revenue: totalRev.toLocaleString('vi-VN'), // Cho cả các key variant khác
+    totalDebt: totalDebt.toLocaleString('vi-VN'),
+    pendingInvoices: pendingCount.toString(),
+    
     notifications: sourceNotifs.map(notif => {
       const detail = dbData.notification_details?.find(d => d.id === parseInt(notif.id));
       if (detail && detail.type === 'multi_entity' && Array.isArray(detail.data)) {
@@ -33,6 +57,62 @@ const mockDashboardStats = () => {
 };
 
 const mockRevenueData = (timeframe) => {
+  const localInvoices = JSON.parse(localStorage.getItem('added_invoices') || '[]');
+  const allInvoices = [...localInvoices, ...(dbData.invoices || [])];
+
+  // Chỉ lấy hóa đơn Đã thanh toán hoặc Thanh toán một phần
+  const validInvoices = allInvoices.filter(inv => 
+    inv.orderStatus === 'Đã thanh toán' || inv.orderStatus === 'Thanh toán một phần'
+  );
+
+  if (timeframe === 'monthly') {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlyData = months.map(m => ({ month: m, revenue: 0, expense: dbData.revenue_monthly?.find(d => d.month === m)?.expense || 0 }));
+    
+    validInvoices.forEach(inv => {
+      const parts = (inv.dueDate || inv.date || "").split('/');
+      if (parts.length === 3) {
+        const mIdx = parseInt(parts[1]) - 1;
+        if (mIdx >= 0 && mIdx < 12) monthlyData[mIdx].revenue += (inv.totalAmount || 0);
+      }
+    });
+    return monthlyData;
+  }
+
+  if (timeframe === 'yearly') {
+    const yearlyMap = {};
+    validInvoices.forEach(inv => {
+      const parts = (inv.dueDate || inv.date || "").split('/');
+      if (parts.length === 3) {
+        const year = parts[2];
+        yearlyMap[year] = (yearlyMap[year] || 0) + (inv.totalAmount || 0);
+      }
+    });
+    // Trộn với data mẫu để biểu đồ có nhiều điểm
+    const baseYears = ["2020", "2021", "2022", "2023", "2024", "2025"];
+    return baseYears.map(y => ({ 
+      month: y, 
+      revenue: yearlyMap[y] || 0, 
+      expense: dbData.revenue_yearly?.find(d => d.month === y)?.expense || 0 
+    }));
+  }
+
+  if (timeframe === 'weekly') {
+    const days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+    const weeklyData = days.map(d => ({ month: d, revenue: 0, expense: dbData.revenue_weekly?.find(w => w.month === d)?.expense || 0 }));
+    
+    validInvoices.forEach(inv => {
+      const parts = (inv.dueDate || inv.date || "").split('/');
+      if (parts.length === 3) {
+        // Mock phân bổ vào thứ trong tuần dựa trên ngày (chỉ để demo vì JS date parsing string VN hơi cực)
+        const dIdx = parseInt(parts[0]) % 7; 
+        weeklyData[dIdx].revenue += (inv.totalAmount || 0);
+      }
+    });
+    return weeklyData;
+  }
+
+  // Fallback to static for daily (since invoices don't have hours)
   const key = `revenue_${timeframe}`;
   return dbData[key] || dbData.revenue_monthly || [];
 };
@@ -100,11 +180,59 @@ const accountingService = {
   getInvoices: async () => {
     if (USE_MOCK) return mockInvoices();
     try {
-      const { data } = await apiClient.get('/api/invoices');
+      const { data } = await apiClient.get('/invoices'); // Giả sử endpoint là /invoices
       return data;
     } catch (err) {
       console.warn('[Dev Fallback] getInvoices → db.json', err.message);
       return mockInvoices();
+    }
+  },
+
+  /** Tạo hóa đơn mới */
+  createInvoice: async (invoiceData) => {
+    if (USE_MOCK) {
+      // Logic tạo ID theo kiểu API: INV-006, INV-007...
+      const localInvoices = JSON.parse(localStorage.getItem('added_invoices') || '[]');
+      const currentInvoices = [...localInvoices, ...(dbData.invoices || [])];
+      
+      const lastNum = currentInvoices.reduce((max, inv) => {
+        const num = parseInt(inv.id?.split('-')[1]) || 0;
+        return num > max ? num : max;
+      }, 0);
+      
+      const newId = `INV-${String(lastNum + 1).padStart(3, '0')}`;
+      return { ...invoiceData, id: newId, orderStatus: 'Chờ thanh toán' };
+    }
+    try {
+      const { data } = await apiClient.post('/invoices', invoiceData);
+      return data;
+    } catch (err) {
+      console.error('Error creating invoice:', err);
+      throw err;
+    }
+  },
+
+  /** Cập nhật trạng thái hóa đơn */
+  updateInvoiceStatus: async (id, status) => {
+    if (USE_MOCK) return { id, orderStatus: status };
+    try {
+      const { data } = await apiClient.patch(`/invoices/${id}`, { orderStatus: status });
+      return data;
+    } catch (err) {
+      console.error('Error updating status:', err);
+      throw err;
+    }
+  },
+
+  /** Cập nhật chi phí phát sinh */
+  updateInvoiceCosts: async (id, totalAmount) => {
+    if (USE_MOCK) return { id, totalAmount };
+    try {
+      const { data } = await apiClient.patch(`/invoices/${id}`, { totalAmount });
+      return data;
+    } catch (err) {
+      console.error('Error updating costs:', err);
+      throw err;
     }
   },
 

@@ -146,7 +146,7 @@ const AccountingDashboard = () => {
       </section>
 
       {/* Analysis Section */}
-      <div className="flex-1 min-h-0 grid grid-cols-12 gap-4 lg:gap-5 lg:overflow-y-auto xl:overflow-visible scrollbar-thin scrollbar-thumb-slate-200 pr-1 pt-4 pb-4">
+      <div className="flex-1 min-h-0 grid grid-cols-12 gap-4 lg:gap-5 lg:overflow-y-auto xl:overflow-visible scrollbar-thin scrollbar-thumb-slate-200 pr-1 pt-4 pb-4 xl:-mt-6">
         <div className="col-span-12 xl:col-span-8 flex flex-col min-h-[400px] lg:min-h-0">
           <div className="acc-card flex-1 flex flex-col p-4 sm:p-5 lg:p-6 pb-2">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
