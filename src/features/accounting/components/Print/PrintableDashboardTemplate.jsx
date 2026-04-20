@@ -37,7 +37,7 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe }) => {
         </div>
         <div style={{ textAlign: 'right' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '700' }}>BÁO CÁO TÓM TẮT TÀI CHÍNH</h2>
-          <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>Kỳ báo cáo: {timeframeLabels[timeframe]} | Ngày xuất: {new Date().toLocaleDateString('vi-VN')}</p>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>Kỳ báo cáo: {timeframeLabels[timeframe]} | Ngày xuất: {new Date().toLocaleDateString('vi-VN')} | Thời gian: {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
         </div>
       </div>
 

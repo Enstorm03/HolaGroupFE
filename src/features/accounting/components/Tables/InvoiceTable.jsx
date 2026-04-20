@@ -1,6 +1,45 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 
 const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = false }) => {
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedInvoices = useMemo(() => {
+    if (!invoices) return [];
+    let sortableItems = [...invoices];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue, bValue;
+
+        if (sortConfig.key === 'value') {
+          const aRemaining = (a.totalAmount || 0) - (a.paidAmount || 0);
+          const bRemaining = (b.totalAmount || 0) - (b.paidAmount || 0);
+          aValue = isCompleted ? (a.totalAmount || 0) : aRemaining;
+          bValue = isCompleted ? (b.totalAmount || 0) : bRemaining;
+        } else {
+          aValue = a[sortConfig.key] || '';
+          bValue = b[sortConfig.key] || '';
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [invoices, sortConfig, isCompleted]);
+
   if (loading) {
     return (
       <div className="space-y-4 animate-pulse">
@@ -23,22 +62,51 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
     );
   }
 
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) return <span className="material-symbols-outlined text-[12px] ml-1 opacity-0 group-hover/th:opacity-100 transition-opacity" aria-hidden="true">unfold_more</span>;
+    return (
+      <span className="material-symbols-outlined text-[14px] ml-1 text-acc-primary font-bold" aria-hidden="true">
+        {sortConfig.direction === 'asc' ? 'expand_less' : 'expand_more'}
+      </span>
+    );
+  };
+
   return (
     <div className="overflow-x-auto no-scrollbar">
-      <table className="w-full text-left border-separate border-spacing-y-3">
+      {/* 
+          NOTE KỸ THUẬT: KHÔNG ĐƯỢC CHỈNH SỬA CODE PLATFORM DESKTOP. 
+          Table này sử dụng class chuyên dụng .acc-responsive-table 
+          đã được cấu hình Card View trong accounting.css cho Mobile.
+      */}
+      <table className="acc-responsive-table w-full text-left border-separate border-spacing-y-3">
         <thead>
           <tr>
-            <th className="px-8 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Hóa đơn</th>
-            <th className="px-8 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Khách hàng</th>
-            <th className="px-8 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">
-              {isCompleted ? 'Tổng hóa đơn' : 'Giá trị còn lại'}
+            <th 
+              className="px-8 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap cursor-pointer hover:bg-slate-50/50 transition-colors group/th"
+              onClick={() => handleSort('id')}
+            >
+              <div className="flex items-center">Hóa đơn {renderSortIcon('id')}</div>
             </th>
-            <th className="px-8 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Trạng thái</th>
-            <th className="px-8 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Thao tác</th>
+            <th 
+              className="px-8 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap cursor-pointer hover:bg-slate-50/50 transition-colors group/th"
+              onClick={() => handleSort('customerName')}
+            >
+              <div className="flex items-center justify-end">Khách hàng {renderSortIcon('customerName')}</div>
+            </th>
+            <th 
+              className="px-8 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap cursor-pointer hover:bg-slate-50/50 transition-colors group/th"
+              onClick={() => handleSort('value')}
+            >
+              <div className="flex items-center justify-end">
+                {isCompleted ? 'Tổng hóa đơn' : 'Giá trị còn lại'} {renderSortIcon('value')}
+              </div>
+            </th>
+            <th className="px-8 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center whitespace-nowrap">Trạng thái</th>
+            {!isCompleted && <th className="px-8 py-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Thao tác</th>}
           </tr>
         </thead>
         <tbody>
-          {invoices.map((invoice) => {
+          {sortedInvoices.map((invoice) => {
             const isSelected = selectedId === invoice.id;
             const remaining = (invoice.totalAmount || 0) - (invoice.paidAmount || 0);
             const displayValue = isCompleted ? invoice.totalAmount : remaining;
@@ -47,29 +115,29 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
               <tr 
                 key={invoice.id} 
                 onClick={() => onSelect(invoice)}
-                className={`group transition-all duration-500 cursor-pointer ${
+                className={`group transition-colors transition-shadow transition-transform duration-300 cursor-pointer ${
                   isSelected 
-                  ? 'bg-acc-primary ring-1 ring-acc-primary/10 shadow-[0_20px_40px_rgba(37,99,235,0.2)] scale-[1.01] -translate-y-1' 
-                  : 'bg-white hover:bg-slate-50 border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-0.5'
+                  ? 'bg-acc-primary ring-1 ring-acc-primary/10 shadow-[0_20px_40px_rgba(37,99,235,0.2)] lg:scale-[1.01] lg:-translate-y-1' 
+                  : 'bg-white hover:bg-slate-50 border border-slate-100 shadow-sm hover:shadow-md lg:hover:-translate-y-0.5'
                 }`}
               >
-                <td className={`px-8 py-5 first:rounded-l-[1.5rem] ${isSelected ? 'text-white' : ''}`}>
+                <td className={`px-8 py-5 ${isSelected ? 'text-white' : ''}`} data-label="Mã GD">
                   <div className="flex flex-col">
-                    <span className="text-sm font-black tracking-tight">{invoice.id}</span>
-                    <span className={`text-[10px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>{invoice.orderID || 'Hợp đồng lẻ'}</span>
+                    <p className="text-sm font-black tracking-tight m-0">{invoice.id}</p>
+                    <p className={`text-[10px] font-bold m-0 ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>{invoice.orderID || 'Hợp đồng lẻ'}</p>
                   </div>
                 </td>
-                <td className={`px-8 py-5 text-right ${isSelected ? 'text-white' : ''}`}>
-                   <div className="flex flex-col items-end">
-                    <span className="text-sm font-black whitespace-nowrap">{invoice.customerName || invoice.customerID}</span>
-                    <span className={`text-[10px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>{invoice.date}</span>
+                <td className={`px-8 py-5 md:text-right text-left ${isSelected ? 'text-white' : ''}`} data-label="Khách hàng">
+                   <div className="flex flex-col md:items-end items-start">
+                    <p className="text-sm font-black whitespace-nowrap m-0">{invoice.customerName || invoice.customerID}</p>
+                    <p className={`text-[10px] font-bold m-0 ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>{invoice.date}</p>
                   </div>
                 </td>
-                <td className={`px-8 py-5 text-right tabular-nums ${isSelected ? 'text-white' : ''}`}>
-                  <span className="text-sm font-black tracking-tight">{(displayValue || 0).toLocaleString()} <small className="text-[10px] opacity-70">VNĐ</small></span>
+                <td className={`px-8 py-5 text-right tabular-nums whitespace-nowrap ${isSelected ? 'text-white' : ''}`} data-label="Giá trị">
+                  <span className="text-sm font-black tracking-tighter">{(displayValue || 0).toLocaleString('vi-VN')} <small className="text-[10px] opacity-70 font-bold">VNĐ</small></span>
                 </td>
-                <td className="px-8 py-5 text-center">
-                  <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm transition-colors ${
+                <td className={`px-8 py-5 text-center`} data-label="Trạng thái">
+                  <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm transition-colors whitespace-nowrap ${
                     invoice.orderStatus === 'Đã thanh toán' 
                     ? 'bg-emerald-500 text-white' 
                     : (isSelected ? 'bg-white/20 text-white ring-1 ring-white/20' : 'bg-amber-100 text-amber-600')
@@ -77,15 +145,17 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
                     {invoice.orderStatus || 'Chờ thu'}
                   </span>
                 </td>
-                <td className="px-8 py-5 text-right last:rounded-r-[1.5rem]">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ml-auto ${
-                    isSelected ? 'bg-white/20 text-white ring-1 ring-white/30' : 'text-acc-primary bg-blue-50/50 group-hover:bg-acc-primary group-hover:text-white group-hover:shadow-lg shadow-acc-primary/20'
-                  }`}>
-                    <span className="material-symbols-outlined text-lg font-bold">
-                      {isSelected ? 'check_circle' : 'payments'}
-                    </span>
-                  </div>
-                </td>
+                {!isCompleted && (
+                  <td className="px-8 py-5 text-right" data-label="Thao tác">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-shadow transition-colors ml-auto ${
+                      isSelected ? 'bg-white/20 text-white ring-1 ring-white/30' : 'text-acc-primary bg-blue-50/50 group-hover:bg-acc-primary group-hover:text-white group-hover:shadow-lg shadow-acc-primary/20'
+                    }`}>
+                      <span className="material-symbols-outlined text-lg font-bold" aria-hidden="true">
+                        {isSelected ? 'check_circle' : 'payments'}
+                      </span>
+                    </div>
+                  </td>
+                )}
               </tr>
             );
           })}

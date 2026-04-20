@@ -435,7 +435,13 @@ const TransactionDetail = () => {
          {/* Hidden Printable Area */}
          {createPortal(
             <PrintableInvoiceTemplate
-               detail={detail}
+               detail={(detail.time && detail.time !== 'N/A')
+                  ? detail
+                  : {
+                     ...detail,
+                     time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                  }
+               }
                extendedData={extendedData}
             />,
             document.body

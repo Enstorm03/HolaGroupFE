@@ -295,7 +295,12 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
 
           {/* Cung cấp phôi in ẩn cho trình duyệt (Printable area) */}
           <PrintableInvoiceTemplate
-            detail={invoice}
+            detail={{
+              ...invoice,
+              time: invoice.time && invoice.time !== 'N/A' 
+                ? invoice.time 
+                : new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+            }}
             extendedData={{ type: 'INVOICE' }}
           />
 
