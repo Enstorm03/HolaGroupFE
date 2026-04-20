@@ -10,37 +10,81 @@ import PrintableInvoiceTemplate from '../components/Print/PrintableInvoiceTempla
 
 const StatusBadgeDropdown = ({ status, onStatusChange, onOpenChange, openUp = false }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const wrapperRef = useRef(null);
+  const buttonRef = useRef(null);
 
   useEffect(() => {
     if (onOpenChange) onOpenChange(isOpen);
   }, [isOpen]);
 
-  const wrapperRef = useRef(null);
   const statuses = [
     { label: 'Đã thanh toán', style: 'bg-emerald-50 text-emerald-600 border-emerald-100', icon: 'check_circle' },
     { label: 'Chờ thanh toán', style: 'bg-amber-50 text-amber-600 border-amber-100', icon: 'schedule' },
     { label: 'Thanh toán một phần', style: 'bg-blue-50 text-blue-600 border-blue-100', icon: 'payments' },
     { label: 'Quá hạn', style: 'bg-rose-50 text-rose-600 border-rose-100', icon: 'warning' }
   ];
+
+  const contentRef = useRef(null);
+
   useEffect(() => {
-    function handleClickOutside(event) { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); }
-    document.addEventListener("mousedown", handleClickOutside);
+    function handleClickOutside(event) {
+      const isOutsideWrapper = wrapperRef.current && !wrapperRef.current.contains(event.target);
+      const isOutsideContent = contentRef.current && !contentRef.current.contains(event.target);
+      
+      if (isOutsideWrapper && isOutsideContent) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      if (buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        setCoords({ top: rect.top, left: rect.left });
+      }
+    }
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [wrapperRef]);
+  }, [isOpen]);
+
   const currentStatus = statuses.find(s => s.label === status) || statuses[1];
+
   return (
     <div className="relative inline-block ml-auto mr-auto lg:mx-0" ref={wrapperRef}>
-      <button aria-label="Thay đổi trạng thái" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} className={`px-4 py-1.5 rounded-xl text-[9px] font-black border uppercase tracking-wider inline-flex items-center justify-center gap-2 min-w-[140px] transition-all hover:scale-105 active:scale-95 shadow-sm ${currentStatus.style}`}>
-        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>{status}<span aria-hidden="true" className="material-symbols-outlined text-[10px]">expand_more</span>
+      <button 
+        ref={buttonRef}
+        aria-label="Thay đổi trạng thái" 
+        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} 
+        className={`px-4 py-1.5 rounded-xl text-[9px] font-black border uppercase tracking-wider inline-flex items-center justify-center gap-2 min-w-[140px] transition-all hover:scale-105 active:scale-95 shadow-sm ${currentStatus.style}`}
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>{status}<span aria-label="Mở" className="material-symbols-outlined text-[10px]">expand_more</span>
       </button>
-      {isOpen && (
-        <div className={`absolute ${openUp ? 'bottom-full mb-3' : 'top-full mt-2'} left-1/2 -translate-x-1/2 w-max min-w-[15rem] bg-white/95 backdrop-blur-xl rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 p-2 z-[60] animate-fade-in`}>
+
+      {isOpen && createPortal(
+        <div 
+          ref={contentRef}
+          className="fixed w-max min-w-[15rem] bg-white/95 backdrop-blur-xl rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 p-2 z-[9999] animate-fade-in"
+          style={{
+            top: openUp ? (coords.top - 180) : (coords.top + 40),
+            left: coords.left + 70,
+            transform: 'translateX(-50%)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
           {statuses.map((s, i) => (
-            <button key={i} onClick={(e) => { e.stopPropagation(); onStatusChange(s.label); setIsOpen(false); }} className={`w-full px-4 py-2.5 text-[9px] font-black uppercase tracking-widest flex items-center gap-3 transition-colors hover:bg-slate-50 whitespace-nowrap ${status === s.label ? 'text-acc-primary' : 'text-slate-500'}`}>
-              <span className={`material-symbols-outlined text-base ${s.style.split(' ')[1]}`}>{s.icon}</span>{s.label}{status === s.label && <span className="material-symbols-outlined ml-auto text-sm">check</span>}
+            <button 
+              key={i} 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                onStatusChange(s.label); 
+                setIsOpen(false); 
+              }} 
+              className={`w-full px-4 py-2.5 text-[9px] font-black uppercase tracking-widest flex items-center gap-3 transition-colors hover:bg-slate-50 whitespace-nowrap ${status === s.label ? 'text-acc-primary' : 'text-slate-500'}`}
+            >
+              <span aria-hidden="true" className={`material-symbols-outlined text-base ${s.style.split(' ')[1]}`}>{s.icon}</span>{s.label}{status === s.label && <span className="material-symbols-outlined ml-auto text-sm">check</span>}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -390,38 +434,93 @@ const AdjustmentModal = ({ isOpen, onClose, invoice, onUpdate }) => {
 
 const ActionMenu = ({ invoice, onAdjust, onEdit, onDelete, onView, onOpenChange, openUp = false }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const wrapperRef = useRef(null);
+  const buttonRef = useRef(null);
+  const contentRef = useRef(null);
 
   useEffect(() => {
     if (onOpenChange) onOpenChange(isOpen);
+  }, [isOpen, onOpenChange]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      // Chỉ đóng nếu click nằm ngoài cả nút bấm gốc VÀ nội dung menu trong Portal
+      const isOutsideWrapper = wrapperRef.current && !wrapperRef.current.contains(event.target);
+      const isOutsideContent = contentRef.current && !contentRef.current.contains(event.target);
+      
+      if (isOutsideWrapper && isOutsideContent) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      if (buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        setCoords({ top: rect.top, left: rect.left });
+      }
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  const wrapperRef = useRef(null);
-  useEffect(() => {
-    function handleClickOutside(event) { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [wrapperRef]);
-
+  const navigate = useNavigate();
   const actions = [
     { label: 'Xem chi tiết', icon: 'visibility', color: 'text-slate-600', onClick: () => onView(invoice.id) },
     { label: 'Sửa hóa đơn', icon: 'edit', color: 'text-blue-600', onClick: () => onEdit(invoice) },
-    { label: 'Điều chỉnh chi phí', icon: 'payments', color: 'text-emerald-600', onClick: () => onAdjust(invoice) },
+    { 
+      label: 'Thanh toán ngay', 
+      icon: 'account_balance_wallet', 
+      color: 'text-amber-600', 
+      hidden: invoice.orderStatus === 'Đã thanh toán',
+      onClick: () => navigate('/accounting/payments', { state: { invoiceId: invoice.id, autoPay: true } }) 
+    },
+    { 
+      label: 'Điều chỉnh chi phí', 
+      icon: 'payments', 
+      color: 'text-emerald-600', 
+      hidden: invoice.orderStatus === 'Đã thanh toán',
+      onClick: () => onAdjust(invoice) 
+    },
     { label: 'Xóa hóa đơn', icon: 'delete', color: 'text-rose-600', hoverBg: 'hover:bg-rose-50', onClick: () => onDelete(invoice.id) },
   ];
 
   return (
     <div className="relative inline-block" ref={wrapperRef}>
-      <button aria-label="Mở menu thao tác" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-[background-color,color,box-shadow] duration-300 ${isOpen ? 'bg-acc-primary text-white shadow-lg' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+      <button 
+        ref={buttonRef}
+        aria-label="Mở menu thao tác" 
+        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} 
+        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-[background-color,color,box-shadow] duration-300 ${isOpen ? 'bg-acc-primary text-white shadow-lg' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+      >
         <span aria-hidden="true" className="material-symbols-outlined">{isOpen ? 'close' : 'more_vert'}</span>
       </button>
-      {isOpen && (
-        <div className={`absolute right-full ${openUp ? 'bottom-[-10px]' : 'top-[-48px]'} mr-5 w-max min-w-[14rem] bg-white rounded-[1.8rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 z-[60] py-2 animate-fade-in overflow-hidden`}>
-          {actions.map((act, i) => (
-            <button key={i} onClick={(e) => { e.stopPropagation(); setIsOpen(false); act.onClick(); }} className={`w-full px-5 py-3 text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-colors whitespace-nowrap ${act.hoverBg || 'hover:bg-slate-50'} ${act.color}`}>
+
+      {isOpen && createPortal(
+        <div 
+          ref={contentRef}
+          className="fixed w-max min-w-[14rem] bg-white rounded-[1.8rem] shadow-[0_30px_60px_rgba(0,0,0,0.25)] border border-slate-100 z-[9999] py-2 animate-fade-in"
+          style={{
+            top: openUp ? (coords.top - 180) : (coords.top - 10),
+            left: coords.left - 240,
+          }}
+          onClick={(e) => e.stopPropagation()} // Chặn click lan ra row của bảng
+        >
+          {actions.filter(a => !a.hidden).map((act, i) => (
+            <button 
+              key={i} 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                e.preventDefault();
+                act.onClick(); 
+                setIsOpen(false); 
+              }} 
+              className={`w-full px-5 py-3 text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-colors whitespace-nowrap ${act.hoverBg || 'hover:bg-slate-50'} ${act.color}`}
+            >
               <span aria-hidden="true" className="material-symbols-outlined text-lg">{act.icon}</span>{act.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -662,11 +761,20 @@ const InvoiceList = () => {
   const [activeRowId, setActiveRowId] = useState(null);
 
   // Custom Popup UI states
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
   const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, title: '', message: '', type: 'warning', onConfirm: () => { } });
   const [toastConfig, setToastConfig] = useState({ show: false, message: '', type: 'success' });
 
   const showToast = (message, type = 'success') => setToastConfig({ show: true, message, type });
   const showConfirm = (title, message, onConfirm, type = 'warning') => setConfirmConfig({ isOpen: true, title, message, onConfirm, type });
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   useEffect(() => {
     // Custom Animations for Premium UX
@@ -700,7 +808,6 @@ const InvoiceList = () => {
     try {
       const newInvoice = await accountingService.createInvoice(invoiceRawData);
       setInvoices(prev => [newInvoice, ...prev]);
-      localStorage.setItem('added_invoices', JSON.stringify([newInvoice, ...JSON.parse(localStorage.getItem('added_invoices') || '[]')]));
       showToast(`Đã tạo hóa đơn ${newInvoice.id} thành công!`);
     } catch (err) {
       showToast("Lỗi khi tạo hóa đơn. Vui lòng kiểm tra lại.", "error");
@@ -756,6 +863,38 @@ const InvoiceList = () => {
     return (filterStatus === 'all' || inv.orderStatus === filterStatus) && matchesSearch;
   });
 
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
+    if (sortConfig.key === 'date') {
+      const dateA = new Date((a.date || '').split('/').reverse().join('-'));
+      const dateB = new Date((b.date || '').split('/').reverse().join('-'));
+      return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+    }
+    if (sortConfig.key === 'totalAmount') {
+      return sortConfig.direction === 'asc' ? (a.totalAmount || 0) - (b.totalAmount || 0) : (b.totalAmount || 0) - (a.totalAmount || 0);
+    }
+    const valA = String(a[sortConfig.key] || '').toLowerCase();
+    const valB = String(b[sortConfig.key] || '').toLowerCase();
+    if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const SortIcon = ({ column }) => {
+    const isActive = sortConfig.key === column;
+    return (
+      <div className={`
+        inline-flex items-center justify-center w-6 h-6 rounded-lg ml-2 transition-all duration-300
+        ${isActive ? 'bg-acc-primary/15 text-acc-primary scale-110 shadow-sm ring-1 ring-acc-primary/20' : 'text-slate-300 group-hover:text-slate-400 group-hover:bg-slate-100'}
+      `}>
+        <span className={`material-symbols-outlined text-[16px] font-black leading-none ${isActive ? 'animate-bounce-subtle' : ''}`}>
+          {isActive 
+            ? (sortConfig.direction === 'asc' ? 'expand_less' : 'expand_more') 
+            : 'unfold_more'}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50 gap-5 animate-fade-up pb-8 overflow-y-auto pr-1 no-scrollbar">
       <ConfirmModal
@@ -808,9 +947,27 @@ const InvoiceList = () => {
           <table className="w-full text-left border-collapse relative acc-responsive-table">
             <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-20">
               <tr>
-                <th scope="col" className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em]">Mã GD</th>
-                <th scope="col" className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em]">Khách hàng</th>
-                <th scope="col" className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em]">Giá trị</th>
+                <th 
+                  scope="col" 
+                  className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
+                  onClick={() => handleSort('id')}
+                >
+                  <div className="flex items-center">Mã GD <SortIcon column="id" /></div>
+                </th>
+                <th 
+                  scope="col" 
+                  className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
+                  onClick={() => handleSort('customerID')}
+                >
+                  <div className="flex items-center">Khách hàng <SortIcon column="customerID" /></div>
+                </th>
+                <th 
+                  scope="col" 
+                  className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
+                  onClick={() => handleSort('totalAmount')}
+                >
+                  <div className="flex items-center">Giá trị <SortIcon column="totalAmount" /></div>
+                </th>
                 <th scope="col" className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] text-center">Trạng thái</th>
                 <th scope="col" className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] text-center">Thao tác</th>
               </tr>
@@ -818,12 +975,12 @@ const InvoiceList = () => {
             <tbody className="divide-y divide-slate-50">
               {loading ? (
                 [1, 2, 3].map(i => <tr key={i}><td colSpan="5" className="p-8 animate-pulse bg-slate-50/20"></td></tr>)
-              ) : filteredInvoices.map((inv, idx) => {
-                const isNearBottom = idx >= filteredInvoices.length - 2 && filteredInvoices.length >= 3;
+              ) : sortedInvoices.map((inv, idx) => {
+                const isNearBottom = idx >= sortedInvoices.length - 2 && sortedInvoices.length >= 3;
                 return (
                   <tr
                     key={`${inv.id}-${idx}`}
-                    className={`hover:bg-slate-50 transition-all cursor-pointer relative ${activeRowId === inv.id ? 'z-[40] bg-slate-50 shadow-sm' : 'z-0'}`}
+                    className={`hover:bg-slate-50 transition-all cursor-pointer relative ${activeRowId === inv.id ? 'z-[100] bg-slate-50 shadow-sm' : 'z-0'}`}
                     onClick={() => { setSelectedInvoice(inv); setIsDetailModalOpen(true); }}
                   >
                     <td className="px-6 py-4 text-sm font-black text-acc-primary" data-label="Mã GD">

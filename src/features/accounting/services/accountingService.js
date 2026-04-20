@@ -122,7 +122,24 @@ const mockRevenueData = (timeframe) => {
   return dbData[key] || dbData.revenue_monthly || [];
 };
 
-const mockInvoices = () => dbData.invoices || [];
+const mockInvoices = () => {
+  const localInvoices = JSON.parse(localStorage.getItem('added_invoices') || '[]');
+  const dbInvoices = dbData.invoices || [];
+  
+  // Gộp dữ liệu: ưu tiên dữ liệu local theo ID
+  const merged = [...localInvoices];
+  dbInvoices.forEach(dbInv => {
+    if (!merged.find(m => m.id === dbInv.id)) {
+      merged.push(dbInv);
+    }
+  });
+  return merged;
+};
+
+const mockPayments = () => {
+  const localPayments = JSON.parse(localStorage.getItem('added_payments') || '[]');
+  return [...localPayments, ...(dbData.payments || [])];
+};
 
 const mockDebtReport = () =>
   dbData.debt_report_full || {
@@ -196,17 +213,32 @@ const accountingService = {
   /** Tạo hóa đơn mới */
   createInvoice: async (invoiceData) => {
     if (USE_MOCK) {
-      // Logic tạo ID theo kiểu API: INV-006, INV-007...
-      const localInvoices = JSON.parse(localStorage.getItem('added_invoices') || '[]');
-      const currentInvoices = [...localInvoices, ...(dbData.invoices || [])];
+      // 1. Lấy danh sách đầy đủ (Merge giữa db.json và localStorage)
+      const allInvoices = mockInvoices();
       
-      const lastNum = currentInvoices.reduce((max, inv) => {
-        const num = parseInt(inv.id?.split('-')[1]) || 0;
-        return num > max ? num : max;
+      // 2. Tìm ID lớn nhất có định dạng INV-XXX
+      const lastNum = allInvoices.reduce((max, inv) => {
+        if (inv.id && inv.id.startsWith('INV-')) {
+          const num = parseInt(inv.id.split('-')[1]) || 0;
+          return num > max ? num : max;
+        }
+        return max;
       }, 0);
       
       const newId = `INV-${String(lastNum + 1).padStart(3, '0')}`;
-      return { ...invoiceData, id: newId, orderStatus: 'Chờ thanh toán' };
+      const newInvoice = { 
+        ...invoiceData, 
+        id: newId, 
+        orderStatus: invoiceData.orderStatus || 'Chờ thanh toán',
+        date: invoiceData.date || new Date().toLocaleDateString('vi-VN'),
+        createdAt: new Date().toISOString()
+      };
+
+      // 3. LƯU NGAY vào localStorage để các lần gọi sau không bị trùng ID
+      const localInvoices = JSON.parse(localStorage.getItem('added_invoices') || '[]');
+      localStorage.setItem('added_invoices', JSON.stringify([newInvoice, ...localInvoices]));
+
+      return newInvoice;
     }
     try {
       const { data } = await apiClient.post('/invoices', invoiceData);
@@ -253,10 +285,50 @@ const accountingService = {
     }
   },
 
-  /** Ghi nhận thanh toán (luôn cần backend thật) */
+  /** Ghi nhận thanh toán */
   recordPayment: async (invoiceId, paymentData) => {
-    const { data } = await apiClient.post('/api/payments', { invoiceId, ...paymentData });
-    return data;
+    if (USE_MOCK) {
+      // ─── Giả lập lưu thanh toán vào localStorage ───
+      const localPayments = JSON.parse(localStorage.getItem('added_payments') || '[]');
+      const newPayment = {
+        id: `PT-${Date.now().toString().slice(-5)}`,
+        invoiceId,
+        ...paymentData,
+        recordedBy: 'Admin (Mock)'
+      };
+      
+      const updatedPayments = [newPayment, ...localPayments];
+      localStorage.setItem('added_payments', JSON.stringify(updatedPayments));
+
+      // ─── Cập nhật trạng thái hóa đơn tương ứng ───
+      const allInvoices = mockInvoices();
+      
+      const updatedInvoices = allInvoices.map(inv => {
+        if (inv.id === invoiceId) {
+          const newPaidAmount = (inv.paidAmount || 0) + paymentData.amount;
+          const isFullyPaid = newPaidAmount >= (inv.totalAmount || 0);
+          return {
+            ...inv,
+            paidAmount: newPaidAmount,
+            orderStatus: isFullyPaid ? 'Đã thanh toán' : 'Thanh toán một phần',
+            nextPaymentDate: paymentData.nextPaymentDate || inv.nextPaymentDate
+          };
+        }
+        return inv;
+      });
+      
+      localStorage.setItem('added_invoices', JSON.stringify(updatedInvoices));
+      
+      return { success: true, data: newPayment };
+    }
+
+    try {
+      const { data } = await apiClient.post('/api/payments', { invoiceId, ...paymentData });
+      return data;
+    } catch (err) {
+      console.error('Error recording payment:', err);
+      throw err;
+    }
   },
 
   /** Lấy thông tin cơ bản của một thông báo theo id */
@@ -283,6 +355,18 @@ const accountingService = {
   getExtendedNotificationDetail: async (id) => {
     const numericId = parseInt(id);
     return dbData.notification_details?.find(item => item.id === numericId) || null;
+  },
+
+  /** Lấy lịch sử thu tiền */
+  getPayments: async () => {
+    if (USE_MOCK) return mockPayments();
+    try {
+      const { data } = await apiClient.get('/api/payments');
+      return data;
+    } catch (err) {
+      console.warn('[Dev Fallback] getPayments → db.json', err.message);
+      return mockPayments();
+    }
   },
 };
 

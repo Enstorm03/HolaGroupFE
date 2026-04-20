@@ -1,8 +1,14 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 /**
+ * ⚠️ WARNING cho AI / Model đời sau:
+ * 1. KHÔNG ĐƯỢC CHỈNH SỬA layout, style của 3 form: LIST, VOUCHER, REPORT dưới mọi hình thức vì nó đã hoạt động hoàn hảo 1 trang A4.
+ * 2. Kiến trúc in (Print Architecture):
+ *    - #root bị ẩn hoàn toàn để ngắt trang dư do component cha (1500px).
+ *    - Các Modal / Overlay bọc bên ngoài form in buộc phải dùng position: static, height: 0 để diệt tận gốc chiều cao ảo.
+ *    - #printable-area dùng position: absolute top-0 left-0 để in chính xác từ mép giấy.
  * Mẫu in TỔNG HỢP KẾ TOÁN PRO-MAX V4.0
- * Tự động chuyển đổi giữa: INVOICE, LIST, VOUCHER, REPORT
  */
 const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
   if (!detail) return null;
@@ -177,7 +183,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
     }
   };
 
-  return (
+  const printableContent = (
     <div 
       id="printable-area" 
       style={{ 
@@ -197,38 +203,29 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
       <style>
         {`
           @media print {
-            html, body, #root, div[class*="modal"], div[class*="Overlay"] { 
-              height: 0 !important; 
-              min-height: 0 !important;
-              margin: 0 !important; 
-              padding: 0 !important; 
-              overflow: visible !important;
-              position: static !important;
-              border: none !important;
-            }
-            body { 
-              visibility: hidden !important; 
-              background: white !important;
+            body { background: white !important; }
+            #root, .acc-modal-overlay, div[class*="accounting-layout"] { display: none !important; }
+            body > *:not(#printable-area) { visibility: hidden; display: none !important; }
+            
+            #printable-area, #printable-area * { 
+              visibility: visible !important; 
+              -webkit-print-color-adjust: exact !important; 
+              print-color-adjust: exact !important; 
             }
             #printable-area { 
-              visibility: visible !important; 
-              position: absolute !important; 
+              position: relative !important; 
               left: 0 !important; 
               top: 0 !important; 
               width: 100% !important; 
-              min-height: auto !important;
+              height: auto !important;
               display: block !important;
               padding: 5mm 15mm !important;
               margin: 0 !important;
               z-index: 9999999 !important;
+              box-sizing: border-box !important;
+              page-break-after: avoid !important;
             }
-            #printable-area * { 
-              visibility: visible !important; 
-            }
-            @page { 
-              size: A4; 
-              margin: 0; 
-            }
+            @page { size: auto; margin: 5mm; }
           }
         `}
       </style>
@@ -268,7 +265,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
          </div>
          <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '0.6rem', fontWeight: '900', color: '#a0aec0', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>ĐƠN VỊ XỬ LÝ</p>
-            <p style={{ margin: '0 0 0.2rem 0', fontSize: '0.8rem', fontWeight: '700', color: '#2d3748' }}>Hola Group HQ - Phòng Kế toán</p>
+            <p style={{ margin: '0.4rem 0 0.2rem 0', fontSize: '0.8rem', fontWeight: '700', color: '#2d3748' }}>Hola Group HQ - Phòng Kế toán</p>
             <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: '700', color: '#2d3748' }}>Trạng thái: <span style={{ color: '#2d3748', fontWeight: '800' }}>ĐÃ XÁC THỰC</span></p>
          </div>
       </div>
@@ -300,6 +297,8 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
       </div>
     </div>
   );
+
+  return createPortal(printableContent, document.body);
 };
 
 export default PrintableInvoiceTemplate;
