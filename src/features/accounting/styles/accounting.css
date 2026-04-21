@@ -253,8 +253,17 @@
     text-transform: uppercase;
   }
 
-  .acc-responsive-table tbody td[data-label="Phiếu thu"] span:first-child::before {
+  .acc-responsive-table tbody td[data-label="Phiếu thu"] span:first-child::before,
+  .acc-responsive-table tbody td[data-label="Chứng từ"] span:first-child::before {
     content: "Số Phiếu: ";
+    font-size: 9px;
+    font-weight: 800;
+    color: #94a3b8;
+    text-transform: uppercase;
+  }
+
+  .acc-responsive-table tbody td[data-label="Chứng từ"] span:first-child::before {
+    content: "Hóa đơn nợ: ";
   }
 
   .acc-responsive-table tbody td[data-label="Mã GD"] p:first-child,
@@ -301,7 +310,8 @@
 
   /* Middle Section: Customer */
   .acc-responsive-table tbody td[data-label="Khách hàng"],
-  .acc-responsive-table tbody td[data-label="Khách hàng / Hóa đơn"] {
+  .acc-responsive-table tbody td[data-label="Khách hàng / Hóa đơn"],
+  .acc-responsive-table tbody td[data-label="Đối tác"] {
     order: 3;
     padding: 1rem 1.75rem 1.5rem !important;
     display: flex !important;
@@ -310,7 +320,8 @@
   }
 
   .acc-responsive-table tbody td[data-label="Khách hàng"] p:first-child::before,
-  .acc-responsive-table tbody td[data-label="Khách hàng / Hóa đơn"] div > span:first-child::before {
+  .acc-responsive-table tbody td[data-label="Khách hàng / Hóa đơn"] div > span:first-child::before,
+  .acc-responsive-table tbody td[data-label="Đối tác"] div > div > span:first-child::before {
     content: "Đối tác: ";
     font-family: inherit;
     position: static;
@@ -332,7 +343,8 @@
 
   /* Lower Section: Price Footer */
   .acc-responsive-table tbody td[data-label="Giá trị"],
-  .acc-responsive-table tbody td[data-label="Số tiền"] {
+  .acc-responsive-table tbody td[data-label="Số tiền"],
+  .acc-responsive-table tbody td[data-label="SỐ TIỀN CÒN NỢ"] {
     order: 4;
     display: flex !important;
     flex-direction: column !important;
@@ -345,7 +357,8 @@
   }
 
   .acc-responsive-table tbody td[data-label="Giá trị"]::before,
-  .acc-responsive-table tbody td[data-label="Số tiền"]::before {
+  .acc-responsive-table tbody td[data-label="Số tiền"]::before,
+  .acc-responsive-table tbody td[data-label="SỐ TIỀN CÒN NỢ"]::before {
     display: block !important;
     content: "TỔNG GIÁ TRỊ";
     font-size: 8px;
@@ -353,6 +366,10 @@
     color: #64748b;
     letter-spacing: 0.1em;
     margin-bottom: 4px;
+  }
+
+  .acc-responsive-table tbody td[data-label="SỐ TIỀN CÒN NỢ"]::before {
+    content: "SỐ TIỀN CÒN NỢ";
   }
 
   .acc-responsive-table tbody td[data-label="Số tiền"]::before {
@@ -439,8 +456,9 @@
     display: flex !important;
     gap: 1.5rem !important;
     padding-bottom: 0.5rem !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    @supports (scrollbar-width: none) {
+      scrollbar-width: none;
+    }
   }
   .acc-tabs-scroll::-webkit-scrollbar { display: none; }
   .acc-tabs-scroll > button { flex-shrink: 0 !important; }
@@ -569,9 +587,11 @@
   .acc-inner-scroll-mobile {
     max-height: 620px !important; /* Giới hạn hiển thị khoảng 3 card Pro Max */
     overflow-y: auto !important;
-    scrollbar-width: none;
     -ms-overflow-style: none; /* IE and Edge */
     padding-bottom: 0.5rem;
+    @supports (scrollbar-width: none) {
+      scrollbar-width: none;
+    }
   }
   .acc-inner-scroll-mobile::-webkit-scrollbar {
     display: none; /* Chụp cảnh báo cho Chrome/Safari */
@@ -582,7 +602,9 @@
   .acc-inner-scroll-mobile {
     max-height: 245px !important; /* Giới hạn hiển thị khoảng 3 dòng table */
     overflow-y: auto !important;
-    scrollbar-width: thin;
+    @supports (scrollbar-width: thin) {
+      scrollbar-width: thin;
+    }
   }
   .acc-inner-scroll-mobile::-webkit-scrollbar {
     width: 6px;
@@ -719,7 +741,6 @@
   /* Fix cho container scroll nếu table quá rộng */
   .flex-1.overflow-auto {
     overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
   }
 
   /* KHÔNG PHÓNG TO CARD KHI SELECT TRÊN IPAD */

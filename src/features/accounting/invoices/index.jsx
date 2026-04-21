@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import '../styles/accounting.css';
 import accountingService from '../services/accountingService';
+import dbData from '../../../../db.json';
 import { exportToPDF } from '../utils/exportUtils';
 import PrintableInvoiceTemplate from '../components/Print/PrintableInvoiceTemplate';
 
@@ -90,28 +91,65 @@ const StatusBadgeDropdown = ({ status, onStatusChange, onOpenChange, openUp = fa
   );
 };
 
-const SearchableCustomerSelect = ({ selectedCustomer, onSelect }) => {
+const SearchableCustomerSelect = ({ selectedCustomerID, onSelect }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [customers] = useState(["Cty CP Kiến Trúc Việt", "Đại lý Hola miền Nam", "Tập đoàn Dệt may Việt Thắng", "Khách sạn Imperial Vũng Tàu", "Hợp tác xã Nông nghiệp Xanh"]);
+  const customers = dbData.customers || [];
   const wrapperRef = useRef(null);
+  
   useEffect(() => {
     function handleClickOutside(event) { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [wrapperRef]);
-  const filtered = customers.filter(c => c.toLowerCase().includes((selectedCustomer || '').toLowerCase()));
+
+  const selectedName = customers.find(c => c.customerID === selectedCustomerID)?.customerName || '';
+  const [searchTerm, setSearchTerm] = useState(selectedName);
+
+  useEffect(() => {
+    setSearchTerm(selectedName);
+  }, [selectedName]);
+
+  const filtered = customers.filter(c => 
+    c.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="relative group" ref={wrapperRef}>
       <span aria-hidden="true" className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl group-focus-within:text-acc-primary transition-colors z-10">person</span>
-      <input type="text" placeholder="Tìm hoặc nhập tên khách hàng…" autoComplete="off" spellCheck={false} className="w-full bg-slate-50 border-2 border-transparent focus:border-acc-primary/20 rounded-2xl py-3 pl-12 pr-4 text-sm font-black text-acc-text-main outline-none focus-visible:ring-2 focus-visible:ring-acc-primary/10 transition-[border-color,box-shadow]" value={selectedCustomer} onFocus={() => setIsOpen(true)} onChange={(e) => { onSelect(e.target.value); setIsOpen(true); }} />
-      {isOpen && (selectedCustomer || filtered.length > 0) && (
+      <input 
+        type="text" 
+        placeholder="Tìm hoặc nhập tên khách hàng…" 
+        autoComplete="off" 
+        spellCheck={false} 
+        className="w-full bg-slate-50 border-2 border-transparent focus:border-acc-primary/20 rounded-2xl py-3 pl-12 pr-4 text-sm font-black text-acc-text-main outline-none focus-visible:ring-2 focus-visible:ring-acc-primary/10 transition-[border-color,box-shadow]" 
+        value={searchTerm} 
+        onFocus={() => setIsOpen(true)} 
+        onChange={(e) => { 
+          setSearchTerm(e.target.value); 
+          setIsOpen(true); 
+          if (!e.target.value) onSelect(null);
+        }} 
+      />
+      {isOpen && (searchTerm || filtered.length > 0) && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 z-[50] max-h-60 overflow-y-auto no-scrollbar py-2 animate-fade-in">
-          {filtered.map((c, i) => (
-            <button key={i} type="button" className="w-full text-left px-5 py-3 text-sm font-black text-acc-text-main hover:bg-slate-50 hover:text-acc-primary transition-colors flex items-center justify-between" onClick={() => { onSelect(c); setIsOpen(false); }}>{c}{selectedCustomer === c && <span className="material-symbols-outlined text-acc-primary text-sm">check_circle</span>}</button>
+          {filtered.map((c) => (
+            <button 
+              key={c.customerID} 
+              type="button" 
+              className="w-full text-left px-5 py-3 text-sm font-black text-acc-text-main hover:bg-slate-50 hover:text-acc-primary transition-colors flex items-center justify-between" 
+              onClick={() => { 
+                onSelect(c.customerID); 
+                setSearchTerm(c.customerName);
+                setIsOpen(false); 
+              }}
+            >
+              <div className="flex flex-col">
+                <span>{c.customerName}</span>
+                <span className="text-[10px] text-slate-400">{c.email || c.phoneNumber}</span>
+              </div>
+              {selectedCustomerID === c.customerID && <span className="material-symbols-outlined text-acc-primary text-sm">check_circle</span>}
+            </button>
           ))}
-          {selectedCustomer && !customers.includes(selectedCustomer) && (
-            <div className="px-5 py-2 border-t border-slate-50 mt-1"><p className="text-[9px] font-black text-acc-primary uppercase">Sử dụng tên mới này</p></div>
-          )}
         </div>
       )}
     </div>
@@ -152,7 +190,7 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
               <div className="space-y-0.5 sm:space-y-1">
                 <h2 className="text-xl sm:text-2xl font-black text-acc-text-main uppercase tracking-tight">Chi tiết Hóa đơn</h2>
                 <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-[9px] sm:text-[11px] font-bold text-acc-text-light uppercase tracking-widest">
-                  <span>Mã GD:</span><span className="text-acc-primary font-black">{invoice.id}</span>
+                  <span>Mã GD:</span><span className="text-acc-primary font-black">{invoice.displayID}</span>
                   <span className="hidden sm:inline mx-2 opacity-20">|</span>
                   <span>Ngày tạo:</span><span className="text-acc-text-main font-black">{invoice.date}</span>
                 </div>
@@ -178,9 +216,25 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                     <div className="flex items-center gap-2 text-[10px] font-black text-acc-text-light uppercase tracking-widest">
                       <span aria-hidden="true" className="material-symbols-outlined text-xs">person</span> Khách hàng
                     </div>
-                    <div className="space-y-1">
-                      <p className="font-black text-acc-text-main text-base leading-tight" translate="no">{invoice.customerID}</p>
-                      <p className="text-[10px] text-acc-text-muted font-medium uppercase tracking-tighter">Đối tác chiến lược</p>
+                    <div className="space-y-2">
+                      <p className="font-black text-acc-text-main text-base leading-tight" translate="no">{invoice.customerName || 'Khách hàng lẻ'}</p>
+                      <div className="flex flex-col gap-1.5 opacity-80">
+                         {invoice.phoneNumber && (
+                           <span className="text-[10px] font-bold text-acc-text-muted flex items-center gap-1">
+                             <span className="material-symbols-outlined text-xs">call</span> {invoice.phoneNumber}
+                           </span>
+                         )}
+                         {invoice.email && (
+                           <span className="text-[10px] font-bold text-acc-text-muted flex items-center gap-1">
+                             <span className="material-symbols-outlined text-xs">mail</span> {invoice.email}
+                           </span>
+                         )}
+                         {invoice.address && (
+                           <span className="text-[10px] font-bold text-acc-text-muted flex items-center gap-1">
+                             <span className="material-symbols-outlined text-xs">location_on</span> {invoice.address}
+                           </span>
+                         )}
+                      </div>
                     </div>
                   </div>
                   <div className="space-y-4 p-6 rounded-3xl bg-slate-50/50 border border-slate-200">
@@ -576,7 +630,7 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.customer.trim() || !formData.orderID.trim()) {
+    if (!formData.customer || !formData.orderID?.toString().trim()) {
       if (showToast) showToast("Vui lòng điền đầy đủ thông tin khách hàng và mã đơn hàng", "error");
       return;
     }
@@ -584,13 +638,14 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
       ...initialData,
       customerID: formData.customer,
       orderID: formData.orderID,
-      date: formData.date.split('-').reverse().join('/'),
+      invoiceDate: formData.date, // Store as ISO for SQL
       dueDate: formData.dueDate,
-      paidAmount: formData.paidAmount,
+      paidAmount: Number(formData.paidAmount),
       finalDueDate: formData.finalDueDate,
       totalAmount,
       items: formData.items,
-      notes: formData.notes
+      notes: formData.notes,
+      status: 'Chờ thanh toán'
     });
     onClose();
   };
@@ -813,7 +868,7 @@ const InvoiceList = () => {
     try {
       const newInvoice = await accountingService.createInvoice(invoiceRawData);
       setInvoices(prev => [newInvoice, ...prev]);
-      showToast(`Đã tạo hóa đơn ${newInvoice.id} thành công!`);
+      showToast(`Đã tạo hóa đơn ${newInvoice.displayID} thành công!`);
     } catch (err) {
       showToast("Lỗi khi tạo hóa đơn. Vui lòng kiểm tra lại.", "error");
     }
@@ -821,42 +876,45 @@ const InvoiceList = () => {
 
   const handleEditInvoice = async (updatedData) => {
     try {
-      // In real app: await accountingService.updateInvoice(updatedData.id, updatedData);
-      setInvoices(prev => prev.map(inv => inv.id === updatedData.id ? updatedData : inv));
-      showToast(`Cập nhật hóa đơn ${updatedData.id} hoàn tất!`);
+      // In real app: await accountingService.updateInvoice(updatedData.invoiceID, updatedData);
+      setInvoices(prev => prev.map(inv => inv.invoiceID === updatedData.invoiceID ? updatedData : inv));
+      showToast(`Cập nhật hóa đơn ${updatedData.displayID} hoàn tất!`);
     } catch (err) {
       showToast("Cập nhật thất bại. Vui lòng thử lại.", "error");
     }
   };
 
-  const handleDeleteInvoice = (id) => {
+  const handleDeleteInvoice = (invoiceID) => {
+    const inv = invoices.find(i => i.invoiceID === invoiceID);
+    const displayID = inv?.displayID || invoiceID;
+    
     showConfirm(
       "Xác nhận xóa hóa đơn?",
-      `Hành động này sẽ xóa vĩnh viễn hóa đơn ${id}. Bạn không thể khôi phục dữ liệu này sau khi thực hiện.`,
+      `Hành động này sẽ xóa vĩnh viễn hóa đơn ${displayID}. Bạn không thể khôi phục dữ liệu này sau khi thực hiện.`,
       () => {
-        setInvoices(prev => prev.filter(inv => inv.id !== id));
+        setInvoices(prev => prev.filter(inv => inv.invoiceID !== invoiceID));
         const local = JSON.parse(localStorage.getItem('added_invoices') || '[]');
-        localStorage.setItem('added_invoices', JSON.stringify(local.filter(i => i.id !== id)));
-        showToast(`Đã xóa hóa đơn ${id} khỏi hệ thống.`, "success");
+        localStorage.setItem('added_invoices', JSON.stringify(local.filter(i => i.invoiceID !== invoiceID)));
+        showToast(`Đã xóa hóa đơn ${displayID} khỏi hệ thống.`, "success");
       },
       'danger'
     );
   };
 
-  const handleStatusChange = async (id, newStatus) => {
+  const handleStatusChange = async (invoiceID, newStatus) => {
     try {
-      await accountingService.updateInvoiceStatus(id, newStatus);
-      setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, orderStatus: newStatus } : inv));
-      showToast(`Đã chuyển trạng thái sang: ${newStatus}`);
+      await accountingService.updateInvoiceStatus(invoiceID, newStatus);
+      setInvoices(prev => prev.map(inv => inv.invoiceID === invoiceID ? { ...inv, orderStatus: newStatus } : inv));
+      showToast(`Đã cập nhật trạng thái.`);
     } catch (err) {
       showToast("Lỗi cập nhật trạng thái.", "error");
     }
   };
 
-  const handleUpdateCosts = async (id, data) => {
+  const handleUpdateCosts = async (invoiceID, data) => {
     try {
-      await accountingService.updateInvoiceCosts(id, data.finalTotal);
-      setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, totalAmount: data.finalTotal } : inv));
+      await accountingService.updateInvoiceCosts(invoiceID, data.finalTotal);
+      setInvoices(prev => prev.map(inv => inv.invoiceID === invoiceID ? { ...inv, totalAmount: data.finalTotal } : inv));
       showToast("Đã cập nhật chi phí quyết toán mới.");
     } catch (err) {
       showToast("Lỗi cập nhật chi phí.", "error");
@@ -864,7 +922,8 @@ const InvoiceList = () => {
   };
 
   const filteredInvoices = invoices.filter(inv => {
-    const matchesSearch = ((inv.id || '') + (inv.orderID || '') + (inv.customerID || '')).toLowerCase().includes(searchTerm.toLowerCase());
+    const searchStr = (inv.displayID || '') + (inv.displayOrderID || '') + (inv.customerName || '');
+    const matchesSearch = searchStr.toLowerCase().includes(searchTerm.toLowerCase());
     return (filterStatus === 'all' || inv.orderStatus === filterStatus) && matchesSearch;
   });
 
@@ -955,16 +1014,16 @@ const InvoiceList = () => {
                 <th 
                   scope="col" 
                   className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
-                  onClick={() => handleSort('id')}
+                  onClick={() => handleSort('invoiceID')}
                 >
-                  <div className="flex items-center">Mã GD <SortIcon column="id" /></div>
+                  <div className="flex items-center">Mã GD <SortIcon column="invoiceID" /></div>
                 </th>
                 <th 
                   scope="col" 
                   className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
-                  onClick={() => handleSort('customerID')}
+                  onClick={() => handleSort('customerName')}
                 >
-                  <div className="flex items-center">Khách hàng <SortIcon column="customerID" /></div>
+                  <div className="flex items-center">Khách hàng <SortIcon column="customerName" /></div>
                 </th>
                 <th 
                   scope="col" 
@@ -982,18 +1041,19 @@ const InvoiceList = () => {
                 [1, 2, 3].map(i => <tr key={i}><td colSpan="5" className="p-8 animate-pulse bg-slate-50/20"></td></tr>)
               ) : sortedInvoices.map((inv, idx) => {
                 const isNearBottom = idx >= sortedInvoices.length - 2 && sortedInvoices.length >= 3;
+                const rowID = inv.invoiceID;
                 return (
                   <tr
-                    key={`${inv.id}-${idx}`}
-                    className={`hover:bg-slate-50 transition-all cursor-pointer relative ${activeRowId === inv.id ? 'z-[100] bg-slate-50 shadow-sm' : 'z-0'}`}
+                    key={`${rowID}-${idx}`}
+                    className={`hover:bg-slate-50 transition-all cursor-pointer relative ${activeRowId === rowID ? 'z-[100] bg-slate-50 shadow-sm' : 'z-0'}`}
                     onClick={() => { setSelectedInvoice(inv); setIsDetailModalOpen(true); }}
                   >
                     <td className="px-6 py-4 text-sm font-black text-acc-primary" data-label="Mã GD">
-                      <p translate="no">{inv.id}</p>
-                      <p className="text-[10px] text-slate-400 font-bold" translate="no">{inv.orderID}</p>
+                      <p translate="no">{inv.displayID}</p>
+                      <p className="text-[10px] text-slate-400 font-bold" translate="no">{inv.displayOrderID}</p>
                     </td>
                     <td className="px-6 py-4" data-label="Khách hàng">
-                      <p className="text-sm font-black text-acc-text-main" translate="no">{inv.customerID}</p>
+                      <p className="text-sm font-black text-acc-text-main" translate="no">{inv.customerName}</p>
                       <p className="text-[10px] text-slate-400 font-bold">{inv.date}</p>
                     </td>
                     <td className="px-6 py-4 text-sm font-black tabular-nums" data-label="Giá trị">
@@ -1002,8 +1062,8 @@ const InvoiceList = () => {
                     <td className="px-6 py-4 text-center" onClick={e => e.stopPropagation()} data-label="Trạng thái">
                       <StatusBadgeDropdown
                         status={inv.orderStatus}
-                        onStatusChange={(s) => handleUpdateStatus(inv.id, s)}
-                        onOpenChange={(open) => setActiveRowId(open ? inv.id : null)}
+                        onStatusChange={(s) => handleStatusChange(rowID, s)}
+                        onOpenChange={(open) => setActiveRowId(open ? rowID : null)}
                         openUp={isNearBottom}
                       />
                     </td>
@@ -1012,9 +1072,9 @@ const InvoiceList = () => {
                         invoice={inv}
                         onAdjust={(i) => { setSelectedInvoice(i); setIsAdjustmentModalOpen(true); }}
                         onEdit={(i) => { setSelectedInvoice(i); setIsEditModalOpen(true); }}
-                        onDelete={handleDeleteInvoice}
+                        onDelete={() => handleDeleteInvoice(rowID)}
                         onView={(id) => { setSelectedInvoice(inv); setIsDetailModalOpen(true); }}
-                        onOpenChange={(open) => setActiveRowId(open ? inv.id : null)}
+                        onOpenChange={(open) => setActiveRowId(open ? rowID : null)}
                         openUp={isNearBottom}
                       />
                     </td>

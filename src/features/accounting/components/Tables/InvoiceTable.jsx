@@ -107,15 +107,15 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
         </thead>
         <tbody>
           {sortedInvoices.map((invoice) => {
-            const isSelected = selectedId === invoice.id;
+            const isSelected = selectedId === invoice.invoiceID;
             const remaining = (invoice.totalAmount || 0) - (invoice.paidAmount || 0);
             const displayValue = isCompleted ? invoice.totalAmount : remaining;
 
             return (
               <tr 
-                key={invoice.id} 
+                key={invoice.invoiceID} 
                 onClick={() => onSelect(invoice)}
-                className={`group transition-colors transition-shadow transition-transform duration-300 cursor-pointer ${
+                className={`group transition duration-300 cursor-pointer ${
                   isSelected 
                   ? 'bg-acc-primary ring-1 ring-acc-primary/10 shadow-[0_20px_40px_rgba(37,99,235,0.2)] lg:scale-[1.01] lg:-translate-y-1' 
                   : 'bg-white hover:bg-slate-50 border border-slate-100 shadow-sm hover:shadow-md lg:hover:-translate-y-0.5'
@@ -123,8 +123,8 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
               >
                 <td className={`px-8 py-5 ${isSelected ? 'text-white' : ''}`} data-label="Mã GD">
                   <div className="flex flex-col">
-                    <p className="text-sm font-black tracking-tight m-0">{invoice.id}</p>
-                    <p className={`text-[10px] font-bold m-0 ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>{invoice.orderID || 'Hợp đồng lẻ'}</p>
+                    <p className="text-sm font-black tracking-tight m-0">{invoice.displayID}</p>
+                    <p className={`text-[10px] font-bold m-0 ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>{invoice.displayOrderID || 'Hợp đồng lẻ'}</p>
                   </div>
                 </td>
                 <td className={`px-8 py-5 md:text-right text-left ${isSelected ? 'text-white' : ''}`} data-label="Khách hàng">
@@ -147,7 +147,7 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
                 </td>
                 {!isCompleted && (
                   <td className="px-8 py-5 text-right" data-label="Thao tác">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-shadow transition-colors ml-auto ${
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition ml-auto ${
                       isSelected ? 'bg-white/20 text-white ring-1 ring-white/30' : 'text-acc-primary bg-blue-50/50 group-hover:bg-acc-primary group-hover:text-white group-hover:shadow-lg shadow-acc-primary/20'
                     }`}>
                       <span className="material-symbols-outlined text-lg font-bold" aria-hidden="true">

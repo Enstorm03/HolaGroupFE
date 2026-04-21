@@ -1,6 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WarningIcon, SuccessIcon, NotificationIcon } from '../Icons/AccountingIcons';
+import accountingService from '../../services/accountingService';
+
+const RelativeTime = ({ notif }) => {
+  const [display, setDisplay] = useState('...');
+
+  useEffect(() => {
+    // Lấy mốc thời gian gốc (cố định)
+    const ts = notif.timestamp || notif.time || notif.paymentDate || notif.createdAt || notif.createAt;
+    
+    if (!ts) {
+      setDisplay('Vừa xong');
+      return;
+    }
+
+    const date = new Date(ts);
+    if (isNaN(date.getTime())) {
+      setDisplay('Vừa xong');
+      return;
+    }
+
+    const calculate = () => {
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 30) return date.toLocaleDateString('vi-VN');
+      if (diffDays > 0) return diffDays === 1 ? 'Hôm qua' : `${diffDays} ngày trước`;
+      if (diffHours > 0) return `${diffHours} giờ trước`;
+      if (diffMins > 0) return `${diffMins} phút trước`;
+      return 'Vừa xong';
+    };
+
+    const updateDisplay = () => {
+      setDisplay(calculate());
+    };
+
+    updateDisplay();
+    // Cập nhật nhanh hơn (10 giây một lần) để người dùng thấy sự thay đổi ngay khi sang phút mới
+    const interval = setInterval(updateDisplay, 10000);
+    return () => clearInterval(interval);
+  }, [notif]);
+
+  return <span className="uppercase">{display}</span>;
+};
 
 const NotificationFeed = ({ notifications, loading }) => {
   const navigate = useNavigate();
@@ -26,10 +72,18 @@ const NotificationFeed = ({ notifications, loading }) => {
     );
   }
 
+  // Sắp xếp các thông báo mới nhất lên đầu dựa trên tất cả các mốc thời gian khả dụng
+  const sortedNotifications = [...notifications].sort((a, b) => {
+    const getTs = (n) => n.timestamp || n.time || n.paymentDate || n.createdAt || n.createAt;
+    const timeA = new Date(getTs(a)).getTime() || 0;
+    const timeB = new Date(getTs(b)).getTime() || 0;
+    return timeB - timeA;
+  });
+
   // Calculate pagination
-  const totalPages = Math.ceil(notifications.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedNotifications.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentItems = notifications.slice(startIndex, startIndex + itemsPerPage);
+  const currentItems = sortedNotifications.slice(startIndex, startIndex + itemsPerPage);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -45,50 +99,77 @@ const NotificationFeed = ({ notifications, loading }) => {
   };
 
   const handleDetail = (notif) => {
-    navigate(`/accounting/transaction/${notif.id}`, { state: { transaction: notif } });
+    navigate(`/accounting/transaction/${encodeURIComponent(notif.id)}`, { state: { transaction: notif } });
   };
 
   const resolveMessage = (notif) => {
     if (!notif.message) return "";
-    if (notif.count !== undefined) {
-      return notif.message.replace(/{count}|(?<=Có )\d+/, notif.count);
-    }
     return notif.message;
+  };
+
+  const getTypeConfig = (notif) => {
+    const uiType = notif.uiType || notif.type || 'info';
+    const txType = notif.transactionType;
+    if (uiType === 'warning') return {
+      iconEl: <WarningIcon className="text-sm" />,
+      iconColor: 'text-amber-500',
+      badge: txType || 'List',
+      badgeClass: 'bg-amber-50 text-amber-600 border-amber-200',
+    };
+    if (uiType === 'report') return {
+      iconEl: <span className="material-symbols-outlined text-sm">bar_chart</span>,
+      iconColor: 'text-violet-500',
+      badge: txType || 'Report',
+      badgeClass: 'bg-violet-50 text-violet-600 border-violet-200',
+    };
+    return {
+      iconEl: <SuccessIcon className="text-sm" />,
+      iconColor: 'text-emerald-500',
+      badge: txType || 'Voucher',
+      badgeClass: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    };
   };
 
   return (
     <div className="flex flex-col h-full bg-white transition-all select-none">
-      {/* Items Container - Optimized for perfect fit without overflow */}
+      {/* Items Container */}
       <div className="flex-1 flex flex-col gap-2.5 sm:gap-3 overflow-hidden">
-        {currentItems.map((notif) => (
-          <div 
-            key={notif.id} 
-            onClick={() => handleDetail(notif)}
-            className="rounded-2.5xl bg-slate-50/50 hover:bg-white hover:shadow-float active:scale-[0.99] transition-all duration-300 border border-slate-200 hover:border-slate-300 group cursor-pointer p-3.5 lg:p-[var(--space-base,14px)]"
-          >
-            <div className="flex gap-4 items-start">
-              <div 
-                className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all group-hover:bg-white group-hover:shadow-md ${
-                  notif.type === 'warning' ? 'text-amber-500' : 'text-emerald-500'
-                }`}
-                style={{ backgroundColor: `color-mix(in srgb, currentColor, transparent 94%)` }}
-              >
-                  {notif.type === 'warning' ? <WarningIcon className="text-sm" /> : <SuccessIcon className="text-sm" />}
-              </div>
-              <div className="flex-1 min-w-0 pt-0.5">
-                <p className="text-[13px] sm:text-body-sm text-acc-text-muted group-hover:text-acc-text-main leading-snug font-bold line-clamp-2">
-                  {resolveMessage(notif)}
-                </p>
-                <div className="flex items-center gap-2 mt-1.5">
-                   <p className="text-[9px] sm:text-label-xs text-acc-text-light/70 font-black uppercase tracking-tighter">{notif.time || 'Vừa xong'}</p>
-                   <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-                   <p className="text-[9px] sm:text-label-xs text-acc-primary font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0">CHI TIẾT →</p>
+        {currentItems.map((notif) => {
+          const cfg = getTypeConfig(notif);
+          return (
+            <div
+              key={notif.id}
+              onClick={() => handleDetail(notif)}
+              className="rounded-2.5xl bg-slate-50/50 hover:bg-white hover:shadow-float active:scale-[0.99] transition-all duration-300 border border-slate-200 hover:border-slate-300 group cursor-pointer p-3.5 lg:p-[var(--space-base,14px)]"
+            >
+              <div className="flex gap-4 items-start">
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all group-hover:bg-white group-hover:shadow-md ${cfg.iconColor}`}
+                  style={{ backgroundColor: `color-mix(in srgb, currentColor, transparent 94%)` }}
+                >
+                  {cfg.iconEl}
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <p className="text-[13px] sm:text-body-sm text-acc-text-muted group-hover:text-acc-text-main leading-snug font-bold line-clamp-2">
+                    {resolveMessage(notif)}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <p className="text-[9px] sm:text-label-xs text-acc-text-light/70 font-black uppercase tracking-tighter">
+                      <RelativeTime notif={notif} />
+                    </p>
+                    <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
+                    <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md border ${cfg.badgeClass}`}>
+                      {cfg.badge}
+                    </span>
+                    <p className="text-[9px] sm:text-label-xs text-acc-primary font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0 ml-auto">CHI TIẾT →</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
 
       {/* Synchronized Pagination Footer - Refined spacing */}
       <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between shrink-0">

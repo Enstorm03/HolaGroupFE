@@ -120,8 +120,10 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
                </div>
                <div style={{ padding: '1.2rem', backgroundColor: '#ffffff', borderRadius: '1.2rem', border: '1px solid #edf2f7' }}>
                   <span style={{ fontSize: '0.6rem', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Khách hàng thanh toán</span>
-                  <p style={{ margin: '0.4rem 0 0.2rem 0', fontSize: '0.85rem', fontWeight: '900', color: '#1a202c' }}>{detail.customerName || detail.customerID || 'Khách hàng lẻ'}</p>
-                  <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b', fontWeight: '700' }}>Email: {detail.customerEmail || 'n/a'}</p>
+                  <p style={{ margin: '0.4rem 0 0.2rem 0', fontSize: '0.85rem', fontWeight: '900', color: '#1a202c' }}>{detail.customerName || 'Khách hàng lẻ'}</p>
+                  <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b', fontWeight: '700' }}>SĐT: {detail.phoneNumber || 'n/a'}</p>
+                  <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b', fontWeight: '700' }}>Email: {detail.email || 'n/a'}</p>
+                  <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b', fontWeight: '700' }}>Đ/C: {detail.address || 'Việt Nam'}</p>
                </div>
             </div>
 

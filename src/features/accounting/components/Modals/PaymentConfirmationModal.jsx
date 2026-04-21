@@ -124,7 +124,7 @@ const PaymentConfirmationModal = ({ isOpen, onClose, invoice, onConfirm, loading
                       key={m.id}
                       type="button"
                       onClick={() => setMethod(m.id)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-colors transition-shadow gap-2 ${
+                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition gap-2 ${
                         method === m.id 
                         ? 'border-acc-primary bg-blue-50/50 shadow-sm' 
                         : 'border-slate-100 hover:border-slate-200'
@@ -181,7 +181,7 @@ const PaymentConfirmationModal = ({ isOpen, onClose, invoice, onConfirm, loading
                   type="button"
                   disabled={loading || amount <= 0}
                   onClick={handleConfirm}
-                  className="w-full acc-btn-primary py-4 rounded-2xl text-label-xs flex items-center justify-center gap-3 shadow-xl shadow-blue-900/20 active:scale-95 transition-colors transition-transform transition-shadow text-white"
+                  className="w-full acc-btn-primary py-4 rounded-2xl text-label-xs flex items-center justify-center gap-3 shadow-xl shadow-blue-900/20 active:scale-95 transition text-white"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />

@@ -23,7 +23,8 @@ const TRANSACTION_LABEL_MAP = {
    items: 'Số mặt hàng',
    stock_val: 'Giá trị kho',
    alert_level: 'Mức cảnh báo',
-   ref_code: 'Mã tham chiếu'
+   ref_code: 'Mã tham chiếu',
+   order_ref: 'Mã đơn tham chiếu'
 };
 
 const TransactionDetail = () => {
@@ -107,9 +108,11 @@ const TransactionDetail = () => {
       const fetchAllData = async () => {
          setLoading(true);
          try {
+            // Decode the URL-encoded notification ID (e.g., notif-pay-1)
+            const decodedId = decodeURIComponent(id);
             const [basicInfo, detailInfo] = await Promise.all([
-               accountingService.getNotificationDetail(id),
-               accountingService.getExtendedNotificationDetail(id)
+               accountingService.getNotificationDetail(decodedId),
+               accountingService.getExtendedNotificationDetail(decodedId)
             ]);
 
             if (basicInfo) {
@@ -162,6 +165,37 @@ const TransactionDetail = () => {
          return detail.message.replace(/{count}|(?<=Có )\d+/, detail.count);
       }
       return detail.message;
+   };
+
+   // Helper định dạng thời gian tuyệt đối
+   const formatFullTime = (ts) => {
+      if (!ts) return 'N/A';
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return 'N/A';
+      
+      const timePart = d.toLocaleTimeString('vi-VN', { 
+         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false 
+      });
+      const datePart = d.toLocaleDateString('vi-VN', {
+         day: '2-digit', month: '2-digit', year: 'numeric'
+      });
+      
+      return `${timePart} - ${datePart}`;
+   };
+
+   // Component nội bộ để cập nhật thời gian tương đối real-time
+   const RelativeTimeDisplay = ({ timestamp }) => {
+      const [rel, setRel] = useState('...');
+      
+      useEffect(() => {
+         if (!timestamp) return;
+         const update = () => setRel(accountingService.getRelativeTime(timestamp));
+         update();
+         const timer = setInterval(update, 10000);
+         return () => clearInterval(timer);
+      }, [timestamp]);
+
+      return <span>{rel}</span>;
    };
 
    return (
@@ -248,10 +282,19 @@ const TransactionDetail = () => {
                {/* Section 1: Header Info */}
                <div className="flex flex-col lg:flex-row justify-between items-start mb-2 gap-4 px-2 sm:px-4">
                   <div className="space-y-4 w-full">
-                     <div className="flex flex-wrap items-center gap-3">
-                        <span className="px-2.5 py-1 bg-slate-100 text-[9px] font-black text-acc-text-light rounded-lg uppercase tracking-widest">ID: {detail.id}</span>
-                        <span className="text-[9px] font-black text-acc-text-light uppercase flex items-center gap-1 opacity-50">
-                           <span className="material-symbols-outlined text-xs">history</span>{detail.time}
+                     <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="px-2.5 py-1 bg-slate-100 text-[9px] font-black text-acc-text-light rounded-lg uppercase tracking-widest border border-slate-200/50">ID: {detail.id}</span>
+                        
+                        {/* Thời gian thực thi (Tuyệt đối) */}
+                        <span className="px-2.5 py-1 bg-acc-primary/5 text-acc-primary text-[9px] font-black rounded-lg uppercase tracking-widest border border-acc-primary/10 flex items-center gap-1.5">
+                           <span className="material-symbols-outlined text-[10px]">schedule</span>
+                           {formatFullTime(detail.timestamp || detail.paymentDate || detail.createdAt || detail.createAt || detail.time)}
+                        </span>
+
+                        {/* Thời gian tương đối (Real-time) */}
+                        <span className="text-[9px] font-black text-acc-text-light uppercase flex items-center gap-1 opacity-50 ml-1">
+                           <span className="material-symbols-outlined text-xs">history</span>
+                           <RelativeTimeDisplay timestamp={detail.timestamp || detail.paymentDate || detail.createdAt || detail.createAt || detail.time} />
                         </span>
                      </div>
                      <h1 className="text-2xl sm:text-3xl font-black text-acc-text-main tracking-tight leading-tight uppercase">
@@ -394,7 +437,7 @@ const TransactionDetail = () => {
 
                                  <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                                       <span className="text-[9px] font-black text-acc-text-light uppercase tracking-widest block mb-2">Đơn vị thụ hưởng</span>
+                                       <span className="text-[9px] font-black text-acc-text-light uppercase tracking-widest block mb-2">Đơn vị thanh toán</span>
                                        <span className="text-[13px] font-black text-acc-text-main uppercase">{extendedData.data?.orderId || extendedData.data?.customer}</span>
                                     </div>
                                     <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">

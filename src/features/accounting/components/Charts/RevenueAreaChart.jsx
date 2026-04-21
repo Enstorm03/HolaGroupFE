@@ -33,7 +33,7 @@ const CustomTooltip = ({ active, payload, label }) => {
           <div className="border-t border-slate-50 flex items-center justify-between bg-blue-50/30 rounded-2xl" style={{ marginTop: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', marginHorizontal: 'calc(var(--space-lg) * -1)' }}>
             <span className="text-label-xs text-acc-primary font-black">Thực thu:</span>
             <span className="text-body-sm font-black text-acc-primary">
-              {(Number(data.revenue || 0) - Number(data.expense || data.debt || 0)).toLocaleString()}₫
+              {Number(data.collected || 0).toLocaleString()}₫
             </span>
           </div>
         </div>
@@ -94,7 +94,7 @@ const RevenueAreaChart = ({ data, loading }) => {
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
             <XAxis 
-              dataKey="month" 
+              dataKey="label" 
               axisLine={false} 
               tickLine={false} 
               tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 800 }} 

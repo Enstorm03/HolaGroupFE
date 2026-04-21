@@ -93,12 +93,12 @@ const PaymentHistoryTable = ({ payments, loading, onPrint }) => {
         <tbody>
           {sortedPayments.map((payment) => (
             <tr 
-              key={payment.id} 
+              key={payment.paymentID} 
               className="acc-table-row group bg-white hover:bg-blue-50/30 transition-colors cursor-pointer"
             >
               <td className="px-6 py-4" data-label="Phiếu thu">
                 <div className="flex flex-col">
-                  <span className="text-body-sm font-black text-acc-text-main">#{payment.id || `PT-${payment.id?.toString().padStart(5, '0')}`}</span>
+                  <span className="text-body-sm font-black text-acc-text-main">{payment.displayID}</span>
                   <span className="text-[10px] text-acc-text-muted font-bold">Xác nhận: {payment.recordedBy || 'Hệ thống'}</span>
                 </div>
               </td>
@@ -109,7 +109,7 @@ const PaymentHistoryTable = ({ payments, loading, onPrint }) => {
               </td>
               <td className="px-6 py-4" data-label="Khách hàng / Hóa đơn">
                 <div className="flex flex-col items-start md:items-start">
-                  <span className="text-body-sm font-black text-acc-primary">#{payment.invoiceId}</span>
+                  <span className="text-body-sm font-black text-acc-primary">{payment.displayInvoiceID}</span>
                   <span className="text-[10px] text-acc-text-muted font-medium">{payment.customerName || 'Khách hàng lẻ'}</span>
                 </div>
               </td>
@@ -120,12 +120,12 @@ const PaymentHistoryTable = ({ payments, loading, onPrint }) => {
               </td>
               <td className="px-6 py-4 text-center" data-label="Phương thức">
                 <span className={`acc-badge text-[10px] font-black border whitespace-nowrap ${
-                  payment.method === 'Cash' ? 'bg-green-50 text-green-600 border-green-100' :
-                  payment.method === 'Transfer' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                  payment.paymentMethod === 'Tiền mặt' ? 'bg-green-50 text-green-600 border-green-100' :
+                  payment.paymentMethod === 'Chuyển khoản' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                   'bg-purple-50 text-purple-600 border-purple-100'
                 }`}>
-                  {payment.method === 'Cash' ? 'TIỀN MẶT' : 
-                   payment.method === 'Transfer' ? 'CHUYỂN KHOẢN' : 'THẺ / POS'}
+                  {payment.paymentMethod === 'Tiền mặt' ? 'TIỀN MẶT' : 
+                   payment.paymentMethod === 'Chuyển khoản' ? 'CHUYỂN KHOẢN' : 'THẺ / POS'}
                 </span>
               </td>
               <td className="px-6 py-4 text-center" data-label="Thao tác">
@@ -135,7 +135,7 @@ const PaymentHistoryTable = ({ payments, loading, onPrint }) => {
                     onPrint(payment);
                   }}
                   aria-label="In phiếu thu"
-                  className="w-8 h-8 rounded-lg bg-blue-50 text-acc-primary hover:bg-acc-primary hover:text-white transition-colors transition-shadow shadow-sm flex items-center justify-center mx-auto"
+                  className="w-8 h-8 rounded-lg bg-blue-50 text-acc-primary hover:bg-acc-primary hover:text-white transition shadow-sm flex items-center justify-center mx-auto"
                  >
                     <span className="material-symbols-outlined text-sm" aria-hidden="true">print</span>
                  </button>

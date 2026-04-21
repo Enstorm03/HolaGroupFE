@@ -35,8 +35,8 @@ const PaymentManagement = () => {
       setPayments(Array.isArray(paymentData) ? paymentData : (paymentData?.data || []));
 
       // Xử lý autoPay từ sale-invoices trỏ qua
-      if (location.state?.invoiceId && location.state?.autoPay) {
-        const targetInv = invList.find(inv => inv.id === location.state.invoiceId);
+      if (location.state?.invoiceID && location.state?.autoPay) {
+        const targetInv = invList.find(inv => inv.invoiceID === location.state.invoiceID);
         if (targetInv && targetInv.orderStatus !== 'Đã thanh toán') {
           setSelectedInvoice(targetInv);
           setIsModalOpen(true);
@@ -60,12 +60,12 @@ const PaymentManagement = () => {
   const handleConfirmPayment = async (paymentData) => {
     try {
       setModalLoading(true);
-      await accountingService.recordPayment(selectedInvoice.id, {
+      await accountingService.recordPayment(selectedInvoice.invoiceID, {
         ...paymentData,
-        customerName: selectedInvoice.customerName || selectedInvoice.customerID
+        customerName: selectedInvoice.customerName
       });
       
-      showToast(`Đã thu tiền thành công cho hóa đơn ${selectedInvoice.id}`, "success");
+      showToast(`Đã thu tiền thành công cho hóa đơn ${selectedInvoice.displayID}`, "success");
       setIsModalOpen(false);
       setSelectedInvoice(null);
       await fetchData();
@@ -79,7 +79,7 @@ const PaymentManagement = () => {
 
   // Handle Printing
   const handlePrint = (payment) => {
-    const invoice = invoices.find(inv => inv.id === payment.invoiceId);
+    const invoice = invoices.find(inv => inv.invoiceID === payment.invoiceID);
     if (!invoice) {
       showToast("Không tìm thấy dữ liệu hóa đơn liên quan!", "error");
       return;
@@ -114,25 +114,37 @@ const PaymentManagement = () => {
   };
 
   // Lọc Hóa đơn chờ thu
-  const filteredInvoices = invoices.filter(inv => 
-    inv.orderStatus !== 'Đã thanh toán' && 
-    (inv.id?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-     inv.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     inv.customerID?.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredInvoices = invoices.filter(inv => {
+    const status = (inv.orderStatus || '').toString();
+    const search = searchQuery.toLowerCase();
+    const matchesSearch = 
+      (inv.displayID || '').toLowerCase().includes(search) || 
+      (inv.customerName || '').toLowerCase().includes(search) ||
+      (inv.displayOrderID || '').toLowerCase().includes(search);
+      
+    return status !== 'Đã thanh toán' && matchesSearch;
+  });
 
   // Lọc Hóa đơn ĐÃ quyết toán
-  const filteredCompletedInvoices = invoices.filter(inv => 
-    inv.orderStatus === 'Đã thanh toán' && 
-    (inv.id?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-     inv.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     inv.customerID?.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredCompletedInvoices = invoices.filter(inv => {
+    const status = (inv.orderStatus || '').toString();
+    const search = searchQuery.toLowerCase();
+    const matchesSearch = 
+      (inv.displayID || '').toLowerCase().includes(search) || 
+      (inv.customerName || '').toLowerCase().includes(search) ||
+      (inv.displayOrderID || '').toLowerCase().includes(search);
+      
+    return status === 'Đã thanh toán' && matchesSearch;
+  });
 
-  const filteredPayments = payments.filter(pay => 
-    pay.invoiceId?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    pay.customerName?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPayments = payments.filter(pay => {
+    const search = searchQuery.toLowerCase();
+    return (
+      (pay.displayInvoiceID || '').toLowerCase().includes(search) || 
+      (pay.displayID || '').toLowerCase().includes(search) ||
+      (pay.customerName || '').toLowerCase().includes(search)
+    );
+  });
 
   return (
     <div className="flex-1 flex flex-col min-h-0 w-full animate-fade-up" style={{ gap: 'var(--space-lg)' }}>
@@ -166,7 +178,7 @@ const PaymentManagement = () => {
           <button 
             onClick={fetchData}
             aria-label="Làm mới dữ liệu"
-            className="w-full sm:w-12 h-12 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-acc-text-muted hover:text-acc-primary transition-colors transition-transform active:scale-95 duration-200 shadow-sm"
+            className="w-full sm:w-12 h-12 bg-white rounded-xl border border-slate-200 flex items-center justify-center text-acc-text-muted hover:text-acc-primary transition active:scale-95 duration-200 shadow-sm"
           >
             <span className="material-symbols-outlined" aria-hidden="true">refresh</span>
             <span className="sm:hidden ml-2 font-black text-[10px] uppercase">Làm mới dữ liệu</span>
@@ -187,7 +199,7 @@ const PaymentManagement = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative pb-4 flex items-center gap-2 transition-colors transition-transform whitespace-nowrap ${
+                className={`relative pb-4 flex items-center gap-2 transition whitespace-nowrap ${
                   activeTab === tab.id 
                   ? 'text-acc-primary font-black scale-105' 
                   : 'text-acc-text-light font-bold hover:text-acc-text-muted'
