@@ -22,7 +22,7 @@ const StatusBadgeDropdown = ({ status, onStatusChange, onOpenChange, openUp = fa
   const statuses = [
     { label: 'Đã thanh toán', style: 'bg-emerald-50 text-emerald-600 border-emerald-100', icon: 'check_circle' },
     { label: 'Chờ thanh toán', style: 'bg-amber-50 text-amber-600 border-amber-100', icon: 'schedule' },
-    { label: 'Thanh toán một phần', style: 'bg-blue-50 text-blue-600 border-blue-100', icon: 'payments' },
+    { label: 'T.Toán một phần', style: 'bg-blue-50 text-blue-600 border-blue-100', icon: 'payments' },
     { label: 'Quá hạn', style: 'bg-rose-50 text-rose-600 border-rose-100', icon: 'warning' }
   ];
 
@@ -121,7 +121,7 @@ const SearchableCustomerSelect = ({ selectedCustomerID, onSelect }) => {
         placeholder="Tìm hoặc nhập tên khách hàng…" 
         autoComplete="off" 
         spellCheck={false} 
-        className="w-full bg-slate-50 border-2 border-transparent focus:border-acc-primary/20 rounded-2xl py-3 pl-12 pr-4 text-sm font-black text-acc-text-main outline-none focus-visible:ring-2 focus-visible:ring-acc-primary/10 transition-[border-color,box-shadow]" 
+        className="w-full bg-slate-50 border-2 border-slate-200 focus:border-acc-primary/30 rounded-2xl py-3 pl-12 pr-4 text-sm font-black text-acc-text-main outline-none focus-visible:ring-4 focus-visible:ring-acc-primary/10 transition-[border-color,box-shadow,background-color] focus:bg-white" 
         value={searchTerm} 
         onFocus={() => setIsOpen(true)} 
         onChange={(e) => { 
@@ -190,7 +190,7 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
               <div className="space-y-0.5 sm:space-y-1">
                 <h2 className="text-xl sm:text-2xl font-black text-acc-text-main uppercase tracking-tight">Chi tiết Hóa đơn</h2>
                 <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-[9px] sm:text-[11px] font-bold text-acc-text-light uppercase tracking-widest">
-                  <span>Mã GD:</span><span className="text-acc-primary font-black">{invoice.displayID}</span>
+                  <span>Mã hóa đơn:</span><span className="text-acc-primary font-black">{invoice.displayID}</span>
                   <span className="hidden sm:inline mx-2 opacity-20">|</span>
                   <span>Ngày tạo:</span><span className="text-acc-text-main font-black">{invoice.date}</span>
                 </div>
@@ -242,9 +242,13 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                       <span aria-hidden="true" className="material-symbols-outlined text-xs">calendar_today</span> Hạn chót
                     </div>
                     <div className="space-y-1">
-                      <p className="font-black text-acc-text-main">{invoice.dueDate || 'N/A'}</p>
-                      <p className="text-[10px] text-rose-500 font-bold uppercase tracking-tighter">
-                        {invoice.finalDueDate ? `Gia hạn: ${invoice.finalDueDate}` : 'Đúng hạn'}
+                      <p className="font-black text-acc-text-main">
+                        {invoice.status === 'paid' ? 'Đã Thanh Toán' : (invoice.dueDate || 'N/A')}
+                      </p>
+                      <p className={`text-[10px] font-bold uppercase tracking-tighter ${invoice.status === 'paid' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {invoice.status === 'paid' 
+                          ? `đã thanh toán vào ${invoice.paidAt || 'N/A'}` 
+                          : (invoice.finalDueDate ? `Gia hạn: ${invoice.finalDueDate}` : 'Đúng hạn')}
                       </p>
                     </div>
                   </div>
@@ -265,11 +269,11 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                     <div className="flex justify-between items-end">
                       <div className="space-y-1">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Đã thu</p>
-                        <p className="text-xl font-black text-emerald-600">{paid.toLocaleString()} đ</p>
+                        <p className="text-xl font-black text-emerald-600">{paid.toLocaleString()} VNĐ</p>
                       </div>
                       <div className="space-y-1 text-right">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Còn nợ</p>
-                        <p className="text-xl font-black text-rose-500">{remaining.toLocaleString()} đ</p>
+                        <p className="text-xl font-black text-rose-500">{remaining.toLocaleString()} VNĐ</p>
                       </div>
                     </div>
                   </div>
@@ -291,12 +295,18 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {(invoice.items || []).map((item, idx) => (
+                      {(!invoice.items || invoice.items.length === 0) ? (
+                        <tr>
+                          <td colSpan="4" className="p-10 text-center text-slate-400 font-medium italic">
+                            Không có sản phẩm nào trong hóa đơn này.
+                          </td>
+                        </tr>
+                      ) : invoice.items.map((item, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="p-5 text-sm font-black text-acc-text-main" data-label="Mô tả">{item.name}</td>
+                          <td className="p-5 text-sm font-black text-acc-text-main" data-label="Tên sản phẩm">{item.name}</td>
                           <td className="p-5 text-center font-bold text-slate-500" data-label="Số lượng">{item.quantity}</td>
-                          <td className="p-5 text-right font-bold text-slate-500 tabular-nums" data-label="Đơn giá">{item.price?.toLocaleString()} đ</td>
-                          <td className="p-5 text-right font-black text-acc-primary tabular-nums" data-label="Thành tiền">{(item.quantity * item.price)?.toLocaleString()} đ</td>
+                          <td className="p-5 text-right font-bold text-slate-500 tabular-nums" data-label="Đơn giá">{item.price?.toLocaleString()} VNĐ</td>
+                          <td className="p-5 text-right font-black text-acc-primary tabular-nums" data-label="Thành tiền">{(item.quantity * item.price)?.toLocaleString()} VNĐ</td>
                         </tr>
                       ))}
                     </tbody>
@@ -312,9 +322,9 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                   </div>
                 </div>
                 <div className="space-y-4 p-8 rounded-[2rem] bg-slate-900 text-white shadow-xl shadow-slate-200">
-                  <div className="flex justify-between items-center text-xs opacity-60 font-medium"><span>Tạm tính</span><span>{subtotal.toLocaleString()} đ</span></div>
+                  <div className="flex justify-between items-center text-xs opacity-60 font-medium"><span>Tạm tính</span><span>{subtotal.toLocaleString()} VNĐ</span></div>
                   {adjustment !== 0 && (
-                    <div className="flex justify-between items-center text-xs opacity-60 font-medium font-italic"><span>Phí & Giảm giá</span><span>{adjustment > 0 ? '+' : ''}{adjustment.toLocaleString()} đ</span></div>
+                    <div className="flex justify-between items-center text-xs opacity-60 font-medium font-italic"><span>Phí & Giảm giá</span><span>{adjustment > 0 ? '+' : ''}{adjustment.toLocaleString()} VNĐ</span></div>
                   )}
                   <div className="h-px bg-white/10 my-2"></div>
                   <div className="flex justify-between items-center">
@@ -440,14 +450,14 @@ const AdjustmentModal = ({ isOpen, onClose, invoice, onUpdate }) => {
                 <div className="space-y-4 relative z-10">
                   <div className="flex justify-between items-center px-2">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Giá trị gốc</span>
-                    <span className="text-sm font-black tabular-nums">{invoice.totalAmount?.toLocaleString()} ₫</span>
+                    <span className="text-sm font-black tabular-nums">{invoice.totalAmount?.toLocaleString()} VNĐ</span>
                   </div>
                   <div className={`flex justify-between items-center px-4 py-3 rounded-2xl ${totalAdjustment >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-sm">{totalAdjustment >= 0 ? 'trending_up' : 'trending_down'}</span>
                       <span className="text-[10px] font-black uppercase tracking-widest">Biến động {totalAdjustment >= 0 ? 'Cộng' : 'Trừ'}</span>
                     </div>
-                    <span className="text-base font-black tabular-nums">{totalAdjustment >= 0 ? '+' : ''}{totalAdjustment.toLocaleString()} ₫</span>
+                    <span className="text-base font-black tabular-nums">{totalAdjustment >= 0 ? '+' : ''}{totalAdjustment.toLocaleString()} VNĐ</span>
                   </div>
                 </div>
               </div>
@@ -472,7 +482,7 @@ const AdjustmentModal = ({ isOpen, onClose, invoice, onUpdate }) => {
           <div className="px-6 sm:px-10 py-5 sm:py-8 border-t border-slate-100 flex flex-row items-center justify-between bg-slate-50/50 backdrop-blur-xl shrink-0 acc-modal-mobile-taskbar">
             <div className="flex flex-col items-start">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Quyết toán mới</span>
-              <span className="text-xl sm:text-3xl font-black text-acc-primary tracking-tighter tabular-nums">{finalTotal.toLocaleString()} ₫</span>
+              <span className="text-xl sm:text-3xl font-black text-acc-primary tracking-tighter tabular-nums">{finalTotal.toLocaleString()} VNĐ</span>
             </div>
             <div className="flex items-center gap-3">
               <button onClick={onClose} className="px-6 py-4 sm:py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-200/50 rounded-xl sm:rounded-2xl transition-all active:scale-95">Hủy</button>
@@ -673,12 +683,12 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
             <form className="space-y-8" id="invoice-form" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Khách hàng</label><SearchableCustomerSelect onSelect={(val) => setFormData(prev => ({ ...prev, customer: val }))} selectedCustomer={formData.customer} /></div>
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Mã đơn hàng</label><input type="text" value={formData.orderID} onChange={(e) => setFormData(prev => ({ ...prev, orderID: e.target.value }))} autoComplete="off" spellCheck={false} placeholder="Ví dụ: HOLA-2024-001" className="w-full bg-slate-50 border-2 border-transparent focus:border-acc-primary/10 rounded-2xl py-3 px-5 text-sm font-black focus:ring-4 focus:ring-acc-primary/5 outline-none transition-all placeholder:text-slate-300" /></div>
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Mã đơn hàng</label><input type="text" value={formData.orderID} onChange={(e) => setFormData(prev => ({ ...prev, orderID: e.target.value }))} autoComplete="off" spellCheck={false} placeholder="Ví dụ: HOLA-2024-001" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-acc-primary/30 rounded-2xl py-3 px-5 text-sm font-black focus:ring-4 focus:ring-acc-primary/5 outline-none transition-all focus:bg-white placeholder:text-slate-300" /></div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Ngày lập</label><input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-transparent focus:border-acc-primary/10 transition-all focus:bg-white" /></div>
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Hạn thanh toán đợt 1</label><input type="date" value={formData.dueDate} onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-transparent focus:border-acc-primary/10 transition-all focus:bg-white" /></div>
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Ngày lập</label><input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-slate-200 focus:border-acc-primary/30 transition-all focus:bg-white" /></div>
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Hạn thanh toán đợt 1</label><input type="date" value={formData.dueDate} min={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-slate-200 focus:border-acc-primary/30 transition-all focus:bg-white" /></div>
               </div>
 
               <div className="p-6 sm:p-8 rounded-[2rem] bg-indigo-50/40 border border-indigo-100/50 space-y-6">
@@ -691,19 +701,19 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">Số tiền đã trả trước (VNĐ)</label>
-                    <input type="number" placeholder="Nhập số tiền đã thu..." className="w-full px-5 py-4 rounded-2xl bg-white border border-transparent focus:border-indigo-400 outline-none text-sm font-black transition-all text-acc-primary shadow-sm" value={formData.paidAmount} onChange={e => setFormData({ ...formData, paidAmount: parseFloat(e.target.value) || 0 })} />
+                    <input type="number" placeholder="Nhập số tiền đã thu..." className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-slate-200 focus:border-indigo-400 outline-none text-sm font-black transition-all text-acc-primary shadow-sm" value={formData.paidAmount} onChange={e => setFormData({ ...formData, paidAmount: parseFloat(e.target.value) || 0 })} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">Hạn thanh toán phần còn lại</label>
                     <div className="relative">
-                      <input type="date" className="w-full px-5 py-4 rounded-2xl bg-white border border-transparent focus:border-indigo-400 outline-none text-sm font-black transition-all text-acc-text-main shadow-sm" value={formData.finalDueDate} onChange={e => setFormData({ ...formData, finalDueDate: e.target.value })} />
+                      <input type="date" className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-slate-200 focus:border-indigo-400 outline-none text-sm font-black transition-all text-acc-text-main shadow-sm" min={formData.dueDate || formData.date} value={formData.finalDueDate} onChange={e => setFormData({ ...formData, finalDueDate: e.target.value })} />
                     </div>
                   </div>
                 </div>
                 <div className="flex justify-between items-center px-6 py-4 rounded-2xl bg-white/50 border border-indigo-100">
                   <div className="flex flex-col">
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Dư nợ còn lại</span>
-                    <span className="text-base font-black text-acc-text-main">{(totalAmount - formData.paidAmount).toLocaleString()} ₫</span>
+                    <span className="text-base font-black text-acc-text-main">{(totalAmount - formData.paidAmount).toLocaleString()} VNĐ</span>
                   </div>
                   <div className="text-[10px] font-black text-indigo-600 uppercase bg-indigo-100/50 px-3 py-1 rounded-lg">
                     {Math.round((formData.paidAmount / totalAmount) * 100) || 0}% Đã thu
@@ -728,10 +738,10 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
                       <tbody className="divide-y divide-slate-50">
                         {formData.items.map((item) => (
                           <tr key={item.id} className="hover:bg-slate-50/30 transition-colors">
-                            <td className="p-3" data-label="Tên sản phẩm"><input type="text" placeholder="Tên sản phẩm..." value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} className="w-full bg-transparent px-2 py-2 font-black outline-none border-b-2 border-transparent focus:border-acc-primary/20" /></td>
-                            <td className="p-3 text-right" data-label="Số lượng"><input type="number" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} className="w-16 bg-transparent text-right font-black outline-none border-b-2 border-transparent focus:border-acc-primary/20 ml-auto" /></td>
-                            <td className="p-3 text-right" data-label="Đơn giá"><input type="text" value={item.price ? Number(item.price).toLocaleString() : ''} onChange={(e) => updateItem(item.id, 'price', e.target.value.replace(/\D/g, ''))} className="w-28 bg-transparent text-right font-black outline-none border-b-2 border-transparent focus:border-acc-primary/20 ml-auto" /></td>
-                            <td className="p-3 text-right font-black text-acc-primary" data-label="Thành tiền">{(item.quantity * item.price).toLocaleString()} <span className="text-[9px] opacity-40">đ</span></td>
+                            <td className="p-3" data-label="Tên sản phẩm"><input type="text" placeholder="Tên sản phẩm..." value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} className="w-full bg-transparent px-2 py-2 font-black outline-none border-b-2 border-slate-100 focus:border-acc-primary/40 transition-colors" /></td>
+                            <td className="p-3 text-right" data-label="Số lượng"><input type="number" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} className="w-16 bg-transparent text-right font-black outline-none border-b-2 border-slate-100 focus:border-acc-primary/40 ml-auto transition-colors" /></td>
+                            <td className="p-3 text-right" data-label="Đơn giá"><input type="text" value={item.price ? Number(item.price).toLocaleString() : ''} onChange={(e) => updateItem(item.id, 'price', e.target.value.replace(/\D/g, ''))} className="w-28 bg-transparent text-right font-black outline-none border-b-2 border-slate-100 focus:border-acc-primary/40 ml-auto transition-colors" /></td>
+                            <td className="p-3 text-right font-black text-acc-primary" data-label="Thành tiền">{(item.quantity * item.price).toLocaleString()} <span className="text-[9px] opacity-40">VNĐ</span></td>
                             <td className="p-3" data-label="Xóa"><button type="button" aria-label="Xóa dòng" onClick={() => removeItem(item.id)} className="w-8 h-8 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center"><span aria-hidden="true" className="material-symbols-outlined text-lg">delete</span></button></td>
                           </tr>
                         ))}
@@ -751,7 +761,7 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
           <div className="px-6 sm:px-8 py-5 sm:py-6 border-t border-slate-100 flex flex-row items-center justify-between bg-slate-50/50 sm:bg-slate-50/50 gap-4 shrink-0 acc-modal-mobile-taskbar">
             <div className="flex flex-col items-start w-full sm:w-auto">
               <span className="text-[9px] font-black text-acc-text-light uppercase tracking-widest">Tổng hóa đơn</span>
-              <span className="text-lg sm:text-2xl font-black text-acc-primary tracking-tighter">{totalAmount.toLocaleString()} ₫</span>
+              <span className="text-lg sm:text-2xl font-black text-acc-primary tracking-tighter">{totalAmount.toLocaleString()} VNĐ</span>
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <button onClick={onClose} className="flex-1 sm:flex-none px-6 py-3.5 sm:py-3 text-[10px] font-black uppercase text-slate-500 transition-all hover:bg-slate-200 rounded-xl sm:rounded-2xl border border-slate-200 sm:border-none backdrop-blur-md">Hủy</button>
@@ -997,11 +1007,11 @@ const InvoiceList = () => {
         </button>
       </div>
 
-      <div className="bg-white p-3 rounded-[1.5rem] border border-slate-200/60 shadow-sm flex flex-col sm:flex-row items-center gap-3 shrink-0">
+      <div className="bg-white p-3 rounded-[1.5rem] border border-slate-200/60 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
         <div className="relative flex-1 w-full"><span aria-hidden="true" className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">search</span><input type="text" placeholder="Tìm kiếm…" aria-label="Tìm kiếm hóa đơn" className="w-full bg-slate-50 border-none rounded-2xl py-2.5 pl-12 text-sm outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-        <div className="flex bg-slate-100 p-1 rounded-xl">
-          {['all', 'Đã thanh toán', 'Chờ thanh toán', 'Quá hạn'].map((s) => (
-            <button key={s} onClick={() => setFilterStatus(s)} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase ${filterStatus === s ? 'bg-white text-acc-primary shadow-sm' : 'text-slate-500'}`}>{s === 'all' ? 'Tất cả' : s}</button>
+        <div className="flex flex-nowrap bg-slate-100 p-1 rounded-xl overflow-x-auto no-scrollbar w-full md:w-auto">
+          {['all', 'Đã thanh toán', 'T.Toán một phần', 'Chờ thanh toán', 'Quá hạn'].map((s) => (
+            <button key={s} onClick={() => setFilterStatus(s)} className={`flex-1 min-w-fit px-5 sm:px-4 py-2 sm:py-1.5 rounded-lg text-[10px] font-black uppercase whitespace-nowrap transition-all ${filterStatus === s ? 'bg-white text-acc-primary shadow-sm' : 'text-slate-500'}`}>{s === 'all' ? 'Tất cả' : s}</button>
           ))}
         </div>
       </div>
@@ -1013,27 +1023,27 @@ const InvoiceList = () => {
               <tr>
                 <th 
                   scope="col" 
-                  className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
+                  className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
                   onClick={() => handleSort('invoiceID')}
                 >
-                  <div className="flex items-center">Mã GD <SortIcon column="invoiceID" /></div>
+                  <div className="flex items-center">Mã hóa đơn <SortIcon column="invoiceID" /></div>
                 </th>
                 <th 
                   scope="col" 
-                  className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
+                  className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
                   onClick={() => handleSort('customerName')}
                 >
                   <div className="flex items-center">Khách hàng <SortIcon column="customerName" /></div>
                 </th>
                 <th 
                   scope="col" 
-                  className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
+                  className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 group transition-colors"
                   onClick={() => handleSort('totalAmount')}
                 >
                   <div className="flex items-center">Giá trị <SortIcon column="totalAmount" /></div>
                 </th>
-                <th scope="col" className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] text-center">Trạng thái</th>
-                <th scope="col" className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] text-center">Thao tác</th>
+                <th scope="col" className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Trạng thái</th>
+                <th scope="col" className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -1048,7 +1058,7 @@ const InvoiceList = () => {
                     className={`hover:bg-slate-50 transition-all cursor-pointer relative ${activeRowId === rowID ? 'z-[100] bg-slate-50 shadow-sm' : 'z-0'}`}
                     onClick={() => { setSelectedInvoice(inv); setIsDetailModalOpen(true); }}
                   >
-                    <td className="px-6 py-4 text-sm font-black text-acc-primary" data-label="Mã GD">
+                    <td className="px-6 py-4 text-sm font-black text-acc-primary" data-label="Mã hóa đơn">
                       <p translate="no">{inv.displayID}</p>
                       <p className="text-[10px] text-slate-400 font-bold" translate="no">{inv.displayOrderID}</p>
                     </td>
@@ -1057,7 +1067,10 @@ const InvoiceList = () => {
                       <p className="text-[10px] text-slate-400 font-bold">{inv.date}</p>
                     </td>
                     <td className="px-6 py-4 text-sm font-black tabular-nums" data-label="Giá trị">
-                      {inv.totalAmount?.toLocaleString()} <span className="text-[10px] font-black opacity-60">VNĐ</span>
+                      <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
+                        {inv.totalAmount?.toLocaleString()}
+                        <span className="inv-vnd-unit font-black opacity-60">VNĐ</span>
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-center" onClick={e => e.stopPropagation()} data-label="Trạng thái">
                       <StatusBadgeDropdown
@@ -1084,9 +1097,12 @@ const InvoiceList = () => {
             </tbody>
           </table>
         </div>
-        <div className="bg-slate-50 border-t border-slate-100 px-6 py-3 flex items-center justify-between shrink-0">
-          <span className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Hiển thị {filteredInvoices.length} của {invoices.length} giao dịch</span>
-          <div className="flex items-center gap-4 text-xs font-black text-acc-text-main"><span className="opacity-40 uppercase text-[9px]">Tổng cộng:</span><span className="tabular-nums text-acc-primary">{filteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0).toLocaleString()} VNĐ</span></div>
+        <div className="bg-slate-50 border-t border-slate-100 px-6 py-4 flex items-center justify-between shrink-0">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hiển thị {filteredInvoices.length} của {invoices.length} giao dịch</span>
+          <div className="flex items-center gap-4 text-xs font-black text-acc-text-main">
+            <span className="text-slate-400 uppercase text-[9px] font-black tracking-widest">Tổng cộng:</span>
+            <span className="tabular-nums text-acc-primary text-sm font-black">{filteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0).toLocaleString()} VNĐ</span>
+          </div>
         </div>
       </div>
     </div>

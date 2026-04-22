@@ -7,155 +7,184 @@ const RISK_CONFIG = {
   medium:   { bg: 'bg-blue-50',   text: 'text-acc-primary',  label: 'Cần theo dõi', icon: 'info'          },
 };
 
-const DebtTable = ({ debts, loading, onReminder }) => {
+const DebtTable = ({ debts, loading, onReminder, onToggleAuto, isMasterAutoEnabled, onSort, sortConfig }) => {
   if (loading) {
     return (
       <div className="space-y-4 animate-pulse">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-24 w-full bg-slate-50 rounded-[2rem]"></div>
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="h-16 w-full bg-slate-50/50 rounded-2xl"></div>
         ))}
       </div>
     );
   }
 
+  const renderSortIcon = (key) => {
+    if (sortConfig.key !== key) return <span className="material-symbols-outlined text-[14px] opacity-20 group-hover/th:opacity-50">unfold_more</span>;
+    return sortConfig.direction === 'asc' 
+      ? <span className="material-symbols-outlined text-[14px] text-acc-primary">expand_less</span>
+      : <span className="material-symbols-outlined text-[14px] text-acc-primary">expand_more</span>;
+  };
+
+  const Header = ({ label, sortKey, align = 'left' }) => (
+    <th 
+      scope="col" 
+      onClick={() => sortKey && onSort(sortKey)}
+      className={`px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer group/th transition-colors hover:bg-slate-100/50 ${align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'}`}
+    >
+      <div className={`flex items-center gap-1 ${align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'}`}>
+        {label}
+        {sortKey && renderSortIcon(sortKey)}
+      </div>
+    </th>
+  );
+
   if (!debts || debts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-acc-text-light opacity-50 bg-slate-50/50 rounded-[2.5rem] border border-dashed border-slate-200">
-        <span className="material-symbols-outlined text-6xl mb-4" aria-hidden="true">sentiment_satisfied</span>
-        <p className="font-black text-label-xs uppercase tracking-widest">Không tìm thấy khoản nợ phù hợp</p>
+      <div className="text-center py-24 bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100/50">
+        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+          <span className="material-symbols-outlined text-4xl text-slate-200" aria-hidden="true">sentiment_satisfied</span>
+        </div>
+        <p className="text-sm font-black uppercase tracking-widest text-slate-400">Không tìm thấy khoản nợ phù hợp…</p>
       </div>
     );
   }
 
+  const totalDebt = debts.reduce((sum, item) => sum + (item.remainingAmount || 0), 0);
+
   return (
-    <div className="overflow-x-auto no-scrollbar">
-      <table className="w-full text-left border-separate acc-responsive-table" style={{ borderSpacing: '0 0.75rem' }}>
-        <thead className="sticky top-0 bg-white z-10">
-          <tr>
-            <th className="text-label-xs text-acc-text-light px-8 py-4">Khách Hàng</th>
-            <th className="text-label-xs text-acc-text-light px-8 py-4">Chứng từ / Quá hạn</th>
-            <th className="text-label-xs text-acc-text-light text-right px-8 py-4">Số Tiền Nợ</th>
-            <th className="text-label-xs text-acc-text-light text-center px-8 py-4">Lần nhắc cuối</th>
-            <th className="text-label-xs text-acc-text-light text-center px-8 py-4">Tự động</th>
-            <th className="text-label-xs text-acc-text-light text-right px-8 py-4">Hành Động</th>
-          </tr>
-        </thead>
-        <tbody>
-          {debts.map((item, index) => {
-            // riskLevel: SQL-aligned English enum (critical / high / medium)
-            const config = RISK_CONFIG[item.riskLevel] || RISK_CONFIG.medium;
-            // Kiểm tra email hợp lệ để quyết định trạng thái nút
-            const hasEmail = !!item.email;
+    <div className="bg-white rounded-[2rem] flex flex-col overflow-hidden animate-fade-up">
+      <div className="flex-1 overflow-auto no-scrollbar">
+        <table className="w-full text-left border-collapse relative acc-responsive-table">
+          <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-20">
+            <tr>
+              <Header label="Khách Hàng" sortKey="customerName" />
+              <Header label="Mã hóa đơn" sortKey="displayID" />
+              <Header label="Quá hạn" sortKey="daysOverdue" align="center" />
+              <Header label="Số Tiền Nợ" sortKey="remainingAmount" align="right" />
+              <Header label="Lần nhắc cuối" sortKey="lastReminderDate" align="center" />
+              <th scope="col" className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center hidden sm:table-cell">Tự động</th>
+              <th scope="col" className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {debts.map((item, index) => {
+              const getRiskLevel = (days) => {
+                if (days > 60) return 'critical';
+                if (days > 30) return 'high';
+                return 'medium';
+              };
+              const riskLevel = getRiskLevel(item.daysOverdue);
+              const config = RISK_CONFIG[riskLevel] || RISK_CONFIG.medium;
+              const hasEmail = !!item.email;
 
-            return (
-              <tr key={index} className="group bg-white hover:bg-slate-50 border border-slate-100 shadow-sm hover:shadow-md rounded-[2rem] transition duration-300">
-
-                {/* Customers: customerName, email, phoneNumber */}
-                <td className="px-8 py-5 first:rounded-l-[2rem]" data-label="Đối tác">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center font-black text-acc-primary border border-slate-100 group-hover:scale-110 transition duration-300 shadow-inner shrink-0">
-                      {item.customerName?.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-body-base font-black text-acc-text-main line-clamp-1">{item.customerName}</span>
-                      <div className="flex flex-col gap-0.5 mt-0.5">
-                        {/* email — SQL: Customers.email (nullable) */}
-                        {item.email ? (
-                          <span className="text-[10px] font-bold text-acc-text-light flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[12px]" aria-hidden="true">mail</span>
-                            {item.email}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold text-red-400 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[12px]" aria-hidden="true">mail_off</span>
-                            Chưa có email
-                          </span>
-                        )}
-                        {/* phoneNumber — SQL: Customers.phoneNumber (nullable) */}
-                        {item.phoneNumber ? (
-                          <span className="text-[10px] font-bold text-acc-text-light flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[12px]" aria-hidden="true">call</span>
-                            {item.phoneNumber}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[12px]" aria-hidden="true">phone_disabled</span>
-                            Chưa có SĐT
-                          </span>
-                        )}
+              return (
+                <tr key={index} className="group hover:bg-slate-50/80 even:bg-slate-50/50 backdrop-blur-sm transition-colors cursor-pointer">
+                  <td className="px-8 py-5" data-label="Đối tác">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center font-black text-acc-primary border border-slate-100 group-hover:scale-110 transition duration-300 shadow-inner shrink-0">
+                        {item.customerName?.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-body-base font-black text-acc-text-main m-0 line-clamp-1">{item.customerName}</span>
+                        <div className="flex flex-col mt-0.5">
+                          {item.email ? (
+                            <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 m-0">
+                              <span className="material-symbols-outlined text-[12px]" aria-hidden="true">mail</span>
+                              {item.email}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-red-400 flex items-center gap-1 m-0">
+                              <span className="material-symbols-outlined text-[12px]" aria-hidden="true">mail_off</span>
+                              Chưa có email
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </td>
+                  </td>
 
-                {/* Invoices.invoiceID + daysOverdue */}
-                <td className="px-8 py-5" data-label="Chứng từ">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-label-xs text-acc-primary bg-blue-50 px-3 py-1 rounded-lg font-black w-fit whitespace-nowrap">
+                  <td className="px-8 py-5" data-label="Mã hóa đơn">
+                    <span className="text-[10px] text-acc-primary bg-blue-50 px-3 py-1 rounded-lg font-black uppercase tracking-widest border border-blue-100/50">
                       {item.displayID}
                     </span>
-                    <span className="text-[11px] font-bold text-acc-error flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[14px]" aria-hidden="true">event_busy</span>
-                      Quá hạn {item.daysOverdue} ngày
-                    </span>
-                  </div>
-                </td>
+                  </td>
 
-                {/* remainingAmount (computed: totalAmount - paidAmount) */}
-                <td className="px-8 py-5 text-right text-body-base font-black text-acc-primary whitespace-nowrap" data-label="SỐ TIỀN CÒN NỢ">
-                  {item.remainingAmount?.toLocaleString('vi-VN')} ₫
-                </td>
-
-                {/* lastReminderDate */}
-                <td className="px-8 py-5 text-center" data-label="Lần nhắc cuối">
-                  {item.lastReminderDate ? (
-                    <div className="flex flex-col items-center">
-                      <span className="text-body-sm font-bold text-acc-text-main">{item.lastReminderDate}</span>
-                      <span className="text-[10px] text-acc-text-light font-bold uppercase tracking-tighter">Qua Email</span>
+                  <td className="px-8 py-5" data-label="Quá hạn">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-sm font-black text-acc-error m-0 whitespace-nowrap">{item.daysOverdue} ngày</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${config.bg} ${config.text} text-[8px] font-black uppercase tracking-wider border border-current/10 shadow-sm`}>
+                        {config.label}
+                      </span>
                     </div>
-                  ) : (
-                    <span className="text-body-xs text-slate-300 font-bold italic">Chưa nhắc</span>
-                  )}
-                </td>
+                  </td>
 
-                {/* autoRemind toggle */}
-                <td className="px-8 py-5" data-label="Trạng thái">
-                  <div className="flex justify-center">
-                    <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${item.autoRemind ? 'bg-acc-primary' : 'bg-slate-200'}`}
-                      title={item.autoRemind ? 'Đang tự động' : 'Thủ công'}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${item.autoRemind ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </div>
-                  </div>
-                </td>
-
-                {/* Actions */}
-                <td className="px-8 py-5 text-right last:rounded-r-[2rem]" data-label="Thao tác">
-                  <div className="flex items-center justify-end gap-2">
-                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full ${config.bg} ${config.text} text-[9px] font-black uppercase tracking-wider border border-current/10 hidden md:flex`}>
-                      {config.label}
+                  <td className="px-8 py-5 text-right tabular-nums whitespace-nowrap" data-label="SỐ TIỀN CÒN NỢ">
+                    <span className="text-sm font-black text-acc-primary m-0">
+                      {item.remainingAmount?.toLocaleString('vi-VN')} <small className="text-[10px] opacity-70 font-bold">VNĐ</small>
                     </span>
-                    <button
-                      onClick={() => onReminder(item)}
-                      disabled={!hasEmail}
-                      className={`px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition active:scale-95 shadow-lg
-                        ${hasEmail
-                          ? 'bg-acc-primary text-white hover:bg-acc-accent shadow-blue-900/10 hover:shadow-blue-900/20'
-                          : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
-                        }`}
-                      aria-label={hasEmail ? `Gửi nhắc nợ cho ${item.customerName}` : `${item.customerName} chưa có email`}
-                      title={!hasEmail ? 'Khách hàng chưa có email' : undefined}
-                    >
-                      Gửi
-                    </button>
-                  </div>
-                </td>
+                  </td>
 
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  <td className="px-8 py-5 text-center" data-label="Lần nhắc cuối">
+                    {item.lastReminderDate ? (
+                      <div className="flex flex-col items-center">
+                        <span className="text-sm font-bold text-acc-text-main m-0">{item.lastReminderDate}</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter m-0 hidden xl:inline">Qua Email</span>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-300 font-bold italic">Chưa nhắc</span>
+                    )}
+                  </td>
+
+                  <td className="px-8 py-5 hidden sm:table-cell" data-label="Tự động">
+                    <div className="flex justify-center">
+                      <div 
+                        role="switch"
+                        aria-checked={item.autoRemind}
+                        aria-label={`Tự động nhắc nợ cho ${item.customerName}`}
+                        tabIndex={isMasterAutoEnabled && hasEmail ? 0 : -1}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          isMasterAutoEnabled && hasEmail && onToggleAuto?.(item.invoiceID);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            isMasterAutoEnabled && hasEmail && onToggleAuto?.(item.invoiceID);
+                          }
+                        }}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-acc-primary/50
+                          ${!isMasterAutoEnabled || !item.email ? 'opacity-40 grayscale cursor-not-allowed' : ''} 
+                          ${item.autoRemind ? 'bg-acc-primary' : 'bg-slate-200'}`}
+                      >
+                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${item.autoRemind ? 'translate-x-5' : 'translate-x-1'}`} />
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="px-8 py-5 text-center" data-label="Thao tác">
+                    <div className="flex justify-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReminder(item);
+                        }}
+                        disabled={!hasEmail}
+                        className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95 shadow-lg
+                          ${hasEmail
+                            ? 'bg-acc-primary text-white hover:bg-acc-accent shadow-blue-900/10 hover:shadow-blue-900/20'
+                            : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                          }`}
+                      >
+                        Gửi nhắc nợ
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

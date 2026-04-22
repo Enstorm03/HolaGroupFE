@@ -1,9 +1,43 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import accountingService from '../services/accountingService';
 import '../styles/accounting.css';
 
 const InvoiceDetail = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [invoice, setInvoice] = useState(location.state?.invoice || null);
+  const [loading, setLoading] = useState(!invoice);
+
+  useEffect(() => {
+    if (!invoice) {
+      // In a real app, we'd get ID from URL params. 
+      // For now, let's just fetch the list and pick the first one or use mock if none.
+      const fetchDetail = async () => {
+        try {
+          const invoices = await accountingService.getInvoices();
+          if (invoices.length > 0) {
+            setInvoice(invoices[0]);
+          }
+        } catch (error) {
+          console.error("Lỗi khi tải chi tiết hóa đơn:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchDetail();
+    }
+  }, [invoice]);
+
+  if (loading) return <div className="flex-1 flex items-center justify-center font-black text-acc-primary animate-pulse uppercase tracking-widest">Đang tải dữ liệu...</div>;
+  if (!invoice) return <div className="flex-1 flex items-center justify-center text-slate-400 font-black uppercase">Không tìm thấy thông tin hóa đơn</div>;
+
+  const subtotal = (invoice.items || []).reduce((sum, it) => sum + (it.quantity * it.price), 0);
+  const tax = subtotal * 0.1;
+  const finalTotal = subtotal + tax;
+  const paid = Number(invoice.paidAmount) || 0;
+  const remaining = Math.max(0, (invoice.totalAmount || finalTotal) - paid);
+  const percent = Math.min(100, Math.round((paid / (invoice.totalAmount || finalTotal)) * 100));
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50 gap-4 sm:gap-6 lg:gap-5 animate-fade-up pb-8 overflow-y-auto xl:overflow-visible no-scrollbar pr-1">
@@ -19,15 +53,19 @@ const InvoiceDetail = () => {
                Quay lại danh sách
              </button>
              <span className="text-[10px] text-slate-300">/</span>
-             <span className="text-[10px] font-black text-acc-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-lg active:scale-95 transition-transform">Hóa đơn #IV-99201</span>
+             <span className="text-[10px] font-black text-acc-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-lg active:scale-95 transition-transform" translate="no">Hóa đơn #{invoice.displayID || invoice.invoiceID}</span>
           </div>
           <h1 className="text-acc-text-main leading-tight font-black text-3xl sm:text-4xl lg:text-[2rem] uppercase tracking-tight">Chi tiết Hóa đơn</h1>
-          <p className="text-sm sm:text-base text-acc-text-muted font-medium">Mã đơn hàng: <span className="text-acc-primary font-black">ORD-2024-001</span></p>
+          <p className="text-sm sm:text-base text-acc-text-muted font-medium">Mã đơn hàng: <span className="text-acc-primary font-black" translate="no">{invoice.displayOrderID || invoice.orderID || 'N/A'}</span></p>
         </div>
         
         <div className="flex items-center gap-2 w-full lg:w-auto">
-          <span className="acc-badge bg-amber-50 text-amber-600 border border-amber-100 px-4 py-2 min-w-[150px] text-center shadow-sm">
-            Thanh toán một phần
+          <span className={`acc-badge px-4 py-2 min-w-[150px] text-center shadow-sm ${
+            invoice.orderStatus === 'Đã thanh toán' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+            invoice.orderStatus === 'Quá hạn' ? 'bg-rose-50 text-rose-600 border-rose-100' : 
+            'bg-amber-50 text-amber-600 border-amber-100'
+          }`}>
+            {invoice.orderStatus || 'Chờ thanh toán'}
           </span>
           <div className="flex items-center gap-2">
             <button className="w-11 h-11 bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-200/60 flex items-center justify-center text-acc-text-muted hover:text-acc-primary hover:border-acc-primary transition-all active:scale-90 duration-200">
@@ -52,13 +90,20 @@ const InvoiceDetail = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="space-y-1">
                 <p className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Khách hàng</p>
-                <h4 className="text-sm font-black text-acc-text-main leading-snug">Cty CP Kiến Trúc Việt</h4>
-                <p className="text-[11px] text-acc-text-muted font-bold leading-none">MST: 0102030405</p>
+                <h4 className="text-sm font-black text-acc-text-main leading-snug" translate="no">{invoice.customerName || 'Khách hàng lẻ'}</h4>
+                <p className="text-[11px] text-acc-text-muted font-bold leading-none">{invoice.email || invoice.phoneNumber || 'Không có thông tin liên hệ'}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Ngày lập & Hạn định</p>
-                <h4 className="text-sm font-black text-acc-text-main leading-snug">24 Tháng 05, 2024</h4>
-                <p className="text-[11px] text-acc-error font-black uppercase tracking-tight">Hết hạn: 10/06/2024</p>
+                <h4 className="text-sm font-black text-acc-text-main leading-snug">{invoice.date || 'N/A'}</h4>
+                <p className={`text-[11px] font-black uppercase tracking-tight ${
+                  invoice.status === 'paid' ? 'text-emerald-500' : 
+                  invoice.orderStatus === 'Quá hạn' ? 'text-acc-error' : 'text-acc-text-muted'
+                }`}>
+                  {invoice.status === 'paid' 
+                    ? `đã thanh toán vào ${invoice.paidAt || 'N/A'}` 
+                    : (invoice.finalDueDate ? `Gia hạn: ${invoice.finalDueDate}` : `Hạn chót: ${invoice.dueDate || 'N/A'}`)}
+                </p>
               </div>
               <div className="space-y-1">
                 <p className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Người phụ trách</p>
@@ -71,7 +116,7 @@ const InvoiceDetail = () => {
           {/* Line Items Table Container */}
           <div className="flex-1 min-h-0 bg-white rounded-[2.5rem] border border-slate-200/60 shadow-2xl overflow-hidden flex flex-col">
             <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-slate-200 p-2">
-               <table className="w-full text-left border-collapse relative">
+               <table className="w-full text-left border-collapse relative acc-responsive-table">
                   <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10 backdrop-blur-md">
                     <tr>
                       <th className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em]">Danh mục hàng hóa</th>
@@ -81,25 +126,26 @@ const InvoiceDetail = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {[
-                      { desc: "Gạch men cao cấp 60x60", id: "GMC-60-WH", qty: 450, unit: "m²", price: 320000, total: 144000000 },
-                      { desc: "Xi măng Holcim đa dụng", id: "Bao 50kg, Loại I", qty: 120, unit: "Bao", price: 95000, total: 11400000 },
-                      { desc: "Sơn nước Dulux nội thất", id: "Thùng 18L, Màu Trắng", qty: 15, unit: "Thùng", price: 1850000, total: 27750000 }
-                    ].map((item, i) => (
+                    {(!invoice.items || invoice.items.length === 0) ? (
+                      <tr>
+                        <td colSpan="4" className="px-6 py-10 text-center text-slate-400 font-medium italic">
+                          Không có sản phẩm nào trong hóa đơn này.
+                        </td>
+                      </tr>
+                    ) : invoice.items.map((item, i) => (
                       <tr key={i} className="hover:bg-slate-50/50 transition-all duration-200 group">
-                        <td className="px-6 py-5">
-                          <p className="text-sm font-black text-acc-text-main leading-tight italic">{item.desc}</p>
-                          <p className="text-[10px] text-acc-text-light font-bold uppercase tracking-wider">{item.id}</p>
+                        <td className="px-6 py-5" data-label="Mô tả">
+                          <p className="text-sm font-black text-acc-text-main leading-tight italic">{item.name}</p>
+                          <p className="text-[10px] text-acc-text-light font-bold uppercase tracking-wider">{item.id || i + 1}</p>
                         </td>
-                        <td className="px-4 py-5 text-right tabular-nums">
-                          <span className="text-sm font-black text-acc-text-main">{item.qty}</span>
-                          <span className="text-[10px] text-acc-text-light ml-1 font-bold">{item.unit}</span>
+                        <td className="px-4 py-5 text-right tabular-nums" data-label="Số lượng">
+                          <span className="text-sm font-black text-acc-text-main">{item.quantity}</span>
                         </td>
-                        <td className="px-4 py-5 text-right text-sm font-black text-acc-text-muted tabular-nums">
-                          {item.price.toLocaleString()}
+                        <td className="px-4 py-5 text-right text-sm font-black text-acc-text-muted tabular-nums" data-label="Đơn giá">
+                          {item.price?.toLocaleString()} VNĐ
                         </td>
-                        <td className="px-6 py-5 text-right text-sm font-black text-acc-primary tabular-nums">
-                          {item.total.toLocaleString()}
+                        <td className="px-6 py-5 text-right text-sm font-black text-acc-primary tabular-nums" data-label="Thành tiền">
+                          {(item.quantity * item.price)?.toLocaleString()} VNĐ
                         </td>
                       </tr>
                     ))}
@@ -112,16 +158,16 @@ const InvoiceDetail = () => {
                <div className="flex flex-col items-end gap-3">
                   <div className="flex justify-between w-full sm:w-72">
                     <span className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Tạm tính:</span>
-                    <span className="text-sm font-black text-acc-text-main tabular-nums">183,150,000 ₫</span>
+                    <span className="text-sm font-black text-acc-text-main tabular-nums">{subtotal.toLocaleString()} VNĐ</span>
                   </div>
                   <div className="flex justify-between w-full sm:w-72">
                     <span className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Thuế VAT (10%):</span>
-                    <span className="text-sm font-black text-acc-text-main tabular-nums">18,315,000 ₫</span>
+                    <span className="text-sm font-black text-acc-text-main tabular-nums">{tax.toLocaleString()} VNĐ</span>
                   </div>
                   <div className="w-full sm:w-80 h-px bg-slate-200 my-1"></div>
                   <div className="flex justify-between w-full sm:w-80 text-acc-primary">
                     <span className="text-sm font-black uppercase tracking-tight">Tổng cộng:</span>
-                    <span className="text-xl font-black tabular-nums">203,965,000 ₫</span>
+                    <span className="text-xl font-black tabular-nums">{(invoice.totalAmount || finalTotal).toLocaleString()} VNĐ</span>
                   </div>
                </div>
             </div>
@@ -139,15 +185,15 @@ const InvoiceDetail = () => {
              <div className="relative z-10 space-y-4">
                 <div className="space-y-1">
                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Dư nợ cần thu</p>
-                   <h3 className="text-3xl font-black tabular-nums scale-y-110 origin-left tracking-tight">53,965,000 ₫</h3>
+                   <h3 className="text-3xl font-black tabular-nums scale-y-110 origin-left tracking-tight">{remaining.toLocaleString()} VNĐ</h3>
                 </div>
                 <div className="flex flex-col gap-2">
                    <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 border border-white/5">
                       <span className="material-symbols-outlined text-sm">check_circle</span>
-                      <span className="text-[10px] font-black uppercase tracking-wider">Đã thu: 150,000,000 ₫</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider">Đã thu: {paid.toLocaleString()} VNĐ</span>
                    </div>
                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-400 rounded-full w-[73%]"></div>
+                      <div className="h-full bg-emerald-400 rounded-full transition-all duration-1000" style={{ width: `${percent}%` }}></div>
                    </div>
                 </div>
              </div>
@@ -160,13 +206,13 @@ const InvoiceDetail = () => {
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-acc-text-main">Ghi nhận thanh toán</h3>
              </div>
              
-             <form className="space-y-5">
+             <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
                <div className="space-y-2">
                   <label className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Số tiền nhận (VNĐ)</label>
                   <div className="relative">
                     <input 
                       type="text" 
-                      defaultValue="53,965,000"
+                      defaultValue={remaining.toLocaleString()}
                       className="w-full bg-slate-50 border-none rounded-2xl py-3.5 px-4 text-base font-black text-acc-primary outline-none ring-2 ring-transparent focus:ring-acc-primary/10 transition-all tabular-nums"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">Input</span>

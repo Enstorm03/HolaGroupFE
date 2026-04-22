@@ -37,7 +37,7 @@ const normalizeInvoiceStatus = (status) => {
 const getStatusLabelVN = (status) => {
   const s = normalizeInvoiceStatus(status);
   if (s === 'paid') return 'Đã thanh toán';
-  if (s === 'partial') return 'Thanh toán một phần';
+  if (s === 'partial') return 'T.Toán một phần';
   if (s === 'overdue') return 'Quá hạn';
   return 'Chờ thanh toán';
 };
@@ -430,8 +430,25 @@ const mockDashboardStats = (timeframe = 'monthly', options = {}) => {
 };
 
 const mockInvoices = () => {
+  const allPayments = getAllCurrentPayments();
   return getAllCurrentInvoices().map(inv => {
     const customer = getCustomerDetails(inv.customerID);
+    // Tìm ngày thanh toán cuối cùng nếu đã thanh toán
+    const normalizedStatus = normalizeInvoiceStatus(inv.status);
+    const payments = allPayments.filter(p => p.invoiceID === inv.invoiceID && (p.status === 'completed' || normalizeInvoiceStatus(p.status) === 'paid'));
+    let paidAt = null;
+    
+    if (normalizedStatus === 'paid') {
+      if (payments.length > 0) {
+        const lastPayment = [...payments].sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))[0];
+        const datePart = lastPayment.paymentDate || inv.invoiceDate || new Date().toISOString().split('T')[0];
+        paidAt = `${new Date(datePart).toLocaleDateString('vi-VN')} - 14:30:00`;
+      } else {
+        const datePart = inv.invoiceDate || new Date().toISOString().split('T')[0];
+        paidAt = `${new Date(datePart).toLocaleDateString('vi-VN')} - 09:00:00`;
+      }
+    }
+
     return {
       ...inv,
       displayID: formatDisplayCode(inv.invoiceID, 'INV'),
@@ -441,6 +458,8 @@ const mockInvoices = () => {
       ...customer,
       orderStatus: getStatusLabelVN(inv.status),
       date: inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString('vi-VN') : 'N/A',
+      items: inv.items || [],
+      paidAt: paidAt
     };
   });
 };
@@ -463,24 +482,56 @@ const mockPayments = () => {
 };
 
 const mockDebtReport = () => {
-  return getAllCurrentInvoices()
+  const allInvoices = getAllCurrentInvoices();
+  const today = new Date();
+
+  // Chỉ lấy hóa đơn chưa thanh toán xong (pending, partial, overdue)
+  const debtItems = allInvoices
     .filter(inv => normalizeInvoiceStatus(inv.status) !== 'paid')
     .map(inv => {
       const customer = getCustomerDetails(inv.customerID);
-      const remaining = (Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0);
+      const total = Number(inv.totalAmount) || 0;
+      const paid = Number(inv.paidAmount) || 0;
+      const remaining = total - paid;
+      
       const due = new Date(inv.dueDate);
-      const today = new Date();
-      const diffDays = Math.ceil(Math.abs(today - due) / (1000 * 60 * 60 * 24));
+      const diffTime = today - due;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const overdueDays = diffTime > 0 ? diffDays : 0;
+
+      // Logic xác định mức độ rủi ro (Risk Level)
+      let risk = 'medium';
+      if (overdueDays > 30 || remaining > 100000000) risk = 'critical';
+      else if (overdueDays > 15 || remaining > 50000000) risk = 'high';
+
       return {
         invoiceID: inv.invoiceID,
         displayID: formatDisplayCode(inv.invoiceID, 'INV'),
         ...customer,
-        totalAmount: inv.totalAmount,
+        totalAmount: total,
         remainingAmount: remaining,
-        daysOverdue: today > due ? diffDays : 0,
-        status: remaining > 100000000 ? 'critical' : remaining > 50000000 ? 'high' : 'medium',
+        daysOverdue: overdueDays,
+        riskLevel: risk,
+        autoRemind: remaining > 10000000, // Tự động nếu nợ lớn
+        lastReminderDate: overdueDays > 7 ? "20/04/2026" : null, // Mock dữ liệu lần nhắc cuối
       };
     });
+
+  // Tính toán số liệu tổng hợp cho Summary Cards
+  const totalDebtVal = debtItems.reduce((sum, d) => sum + d.remainingAmount, 0);
+  const overdueDebtVal = debtItems
+    .filter(d => d.daysOverdue > 0)
+    .reduce((sum, d) => sum + d.remainingAmount, 0);
+  const uniqueCustomers = new Set(debtItems.map(d => d.customerID)).size;
+
+  return {
+    data: debtItems,
+    summary: {
+      totalDebt: totalDebtVal.toLocaleString('vi-VN') + " VNĐ",
+      overdueDebt: overdueDebtVal.toLocaleString('vi-VN') + " VNĐ",
+      customerCount: uniqueCustomers.toString()
+    }
+  };
 };
 
 /**
@@ -801,6 +852,26 @@ const accountingService = {
   getDebtReport: async () => {
     if (USE_MOCK) return mockDebtReport();
     const response = await apiClient.get('/api/reports/debt');
+    return response.data;
+  },
+
+  // ── REMINDERS (Email triggers) ──────────────────────────────────────────
+  sendDebtReminder: async (invoiceID) => {
+    if (USE_MOCK) {
+      // Giả lập độ trễ mạng để UI có cảm giác thực tế
+      await new Promise(resolve => setTimeout(resolve, 800));
+      return { success: true, message: "Mock: Gửi mail thành công" };
+    }
+    const response = await apiClient.post('/api/reminders/send', { invoiceID });
+    return response.data;
+  },
+
+  sendBatchReminders: async (invoiceIDs) => {
+    if (USE_MOCK) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      return { success: true, count: invoiceIDs.length };
+    }
+    const response = await apiClient.post('/api/reminders/batch-send', { invoiceIDs });
     return response.data;
   },
 

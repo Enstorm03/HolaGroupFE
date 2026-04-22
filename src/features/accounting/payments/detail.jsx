@@ -70,7 +70,7 @@ const PaymentDetail = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-label-xs text-acc-text-light uppercase">Tổng số tiền đã thu</p>
-                <p className="text-display-sm text-acc-primary">150.000.000 ₫</p>
+                <p className="text-display-sm text-acc-primary">150.000.000 VNĐ</p>
               </div>
               <div className="pt-4 border-t border-slate-200">
                 <p className="text-label-xs text-acc-text-light uppercase mb-2">Bằng chữ</p>

@@ -50,7 +50,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
                     {item.name} <br/>
                     <small style={{ color: '#94a3b8' }}>Mã: {item.id}</small>
                   </td>
-                  <td style={{ padding: '0.6rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '900' }}>{item.amount?.toLocaleString()} đ</td>
+                  <td style={{ padding: '0.6rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '900' }}>{item.amount?.toLocaleString()} VNĐ</td>
                   <td style={{ padding: '0.6rem', textAlign: 'right', fontSize: '0.7rem', fontWeight: '700', color: '#e11d48' }}>Trễ {item.days} Ngày</td>
                 </tr>
               ))}
@@ -144,8 +144,8 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
                     <tr key={idx} style={{ borderBottom: '1px solid #edf2f7' }}>
                       <td style={{ padding: '0.8rem', fontSize: '0.75rem', fontWeight: '800', color: '#2d3748' }}>{item.name}</td>
                       <td style={{ padding: '0.8rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '800', color: '#4a5568' }}>{item.quantity}</td>
-                      <td style={{ padding: '0.8rem', textAlign: 'right', fontWeight: '800', fontSize: '0.75rem', color: '#4a5568' }}>{item.price?.toLocaleString()} đ</td>
-                      <td style={{ padding: '0.8rem', textAlign: 'right', fontWeight: '900', fontSize: '0.85rem', color: '#00288E' }}>{(item.price * item.quantity)?.toLocaleString()} đ</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'right', fontWeight: '800', fontSize: '0.75rem', color: '#4a5568' }}>{item.price?.toLocaleString()} VNĐ</td>
+                      <td style={{ padding: '0.8rem', textAlign: 'right', fontWeight: '900', fontSize: '0.85rem', color: '#00288E' }}>{(item.price * item.quantity)?.toLocaleString()} VNĐ</td>
                     </tr>
                   ))}
                 </tbody>
@@ -158,17 +158,17 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
                 <span style={{ fontSize: '0.6rem', fontWeight: '900', color: '#a0aec0', textTransform: 'uppercase', marginBottom: '0.8rem', letterSpacing: '0.1em' }}>TRẠNG THÁI DÒNG TIỀN</span>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#4a5568' }}>Đã thanh toán ({percent}%):</span>
-                  <span style={{ fontSize: '0.8rem', fontWeight: '900', color: '#38a169' }}>{paid.toLocaleString()} đ</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: '900', color: '#38a169' }}>{paid.toLocaleString()} VNĐ</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#4a5568' }}>Còn lại:</span>
-                  <span style={{ fontSize: '0.8rem', fontWeight: '900', color: '#e53e3e' }}>{remaining.toLocaleString()} đ</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: '900', color: '#e53e3e' }}>{remaining.toLocaleString()} VNĐ</span>
                 </div>
               </div>
               <div style={{ padding: '1.5rem', backgroundColor: '#0f172a', borderRadius: '1.5rem', color: 'white', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', opacity: 0.7 }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase' }}>Tạm tính:</span>
-                  <span style={{ fontSize: '0.8rem', fontWeight: '900' }}>{total.toLocaleString()} đ</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: '900' }}>{total.toLocaleString()} VNĐ</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', opacity: 0.7 }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase' }}>Thuế VAT (0%):</span>
@@ -176,7 +176,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
                 </div>
                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: '900', letterSpacing: '0.05em' }}>TỔNG CỘNG</span>
-                  <span style={{ fontSize: '1.4rem', fontWeight: '900', color: '#818cf8' }}>{total.toLocaleString()} đ</span>
+                  <span style={{ fontSize: '1.4rem', fontWeight: '900', color: '#818cf8' }}>{total.toLocaleString()} VNĐ</span>
                 </div>
               </div>
             </div>

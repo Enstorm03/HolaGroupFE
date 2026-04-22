@@ -42,7 +42,7 @@ const DashboardStat = ({ label, value, trend, isPositive, icon: Icon, color, loa
         <div className="space-y-0.5 sm:space-y-1">
           <p className="text-[8px] sm:text-[9px] text-acc-text-light font-bold truncate uppercase tracking-widest leading-none">{label}</p>
           <h2 
-            className="text-sm sm:text-base md:text-lg xl:text-xl font-black text-acc-text-main tracking-tight group-hover:text-acc-primary transition-colors overflow-hidden text-ellipsis leading-tight"
+            className="acc-summary-value text-sm sm:text-base md:text-lg xl:text-xl font-black text-acc-text-main tracking-tight group-hover:text-acc-primary transition-colors overflow-hidden text-ellipsis leading-tight"
             title={value}
           >
             {value}

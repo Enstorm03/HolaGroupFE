@@ -18,7 +18,7 @@ const CustomTooltip = ({ active, payload, label }) => {
               <span className="text-body-sm font-bold text-acc-text-muted">Doanh thu:</span>
             </div>
             <span className="text-body-sm font-black text-acc-text-main">
-              {Number(data.revenue || 0).toLocaleString()}₫
+              {Number(data.revenue || 0).toLocaleString()} VNĐ
             </span>
           </div>
           <div className="flex items-center justify-between gap-6">
@@ -27,13 +27,13 @@ const CustomTooltip = ({ active, payload, label }) => {
               <span className="text-body-sm font-bold text-acc-text-muted">Công nợ:</span>
             </div>
             <span className="text-body-sm font-black text-amber-600">
-              {Number(data.expense || data.debt || 0).toLocaleString()}₫
+              {Number(data.expense || data.debt || 0).toLocaleString()} VNĐ
             </span>
           </div>
           <div className="border-t border-slate-50 flex items-center justify-between bg-blue-50/30 rounded-2xl" style={{ marginTop: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', marginHorizontal: 'calc(var(--space-lg) * -1)' }}>
             <span className="text-label-xs text-acc-primary font-black">Thực thu:</span>
             <span className="text-body-sm font-black text-acc-primary">
-              {Number(data.collected || 0).toLocaleString()}₫
+              {Number(data.collected || 0).toLocaleString()} VNĐ
             </span>
           </div>
         </div>

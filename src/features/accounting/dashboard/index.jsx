@@ -234,7 +234,7 @@ const AccountingDashboard = () => {
       <section className="space-y-3 lg:space-y-0">
         <h4 className="px-1 text-[9px] font-black text-acc-text-light uppercase tracking-[0.2em] lg:hidden">Chỉ số quan trọng</h4>
         <div 
-        className="grid grid-cols-2 lg:grid-cols-4 shrink-0 gap-3 sm:gap-4 lg:-mt-2" 
+        className="grid grid-cols-2 lg:grid-cols-4 shrink-0 gap-3 sm:gap-4 lg:-mt-2 acc-summary-grid" 
       >
           {/* Derived stats with fallback calculation */}
           {(() => {

@@ -227,7 +227,7 @@ const PaymentManagement = () => {
               className="acc-btn-primary w-full lg:w-auto px-6 py-2.5 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-all text-[11px] animate-in zoom-in slide-in-from-right-4 duration-300"
             >
               <span className="material-symbols-outlined text-lg">payments</span>
-              Thu tiền cho {selectedInvoice.id}
+              Thu tiền cho {selectedInvoice.displayID || selectedInvoice.invoiceID}
             </button>
           )}
         </div>
@@ -238,7 +238,7 @@ const PaymentManagement = () => {
             <InvoiceTable 
               invoices={filteredInvoices}
               loading={loading}
-              selectedId={selectedInvoice?.id}
+              selectedId={selectedInvoice?.invoiceID}
               onSelect={setSelectedInvoice}
             />
           ) : activeTab === 'completed' ? (
