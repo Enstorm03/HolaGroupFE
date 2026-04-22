@@ -157,7 +157,7 @@ const PaymentManagement = () => {
       {/* Header & Stats Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0 px-1 acc-payment-header">
         <div className="space-y-1">
-          <h1 className="text-acc-text-main leading-tight font-black sm:text-3xl" style={{ fontSize: '2rem' }}>Thanh toán & Thu tiền</h1>
+          <h1 className="text-acc-text-main leading-tight font-black text-3xl sm:text-4xl lg:text-[2rem] uppercase tracking-tight">THANH TOÁN & THU TIỀN</h1>
           <p className="text-sm sm:text-base text-acc-text-muted font-medium">Quản lý dòng tiền vào và lịch sử giao dịch khách hàng.</p>
         </div>
 

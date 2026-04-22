@@ -45,7 +45,7 @@ const AccountingReport = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0 px-1">
         <div className="space-y-1">
-          <h1 className="text-acc-text-main leading-tight font-black" style={{ fontSize: '2rem' }}>Phân tích & Báo cáo</h1>
+          <h1 className="text-acc-text-main leading-tight font-black text-3xl sm:text-4xl lg:text-[2rem] uppercase tracking-tight">PHÂN TÍCH & BÁO CÁO</h1>
           <p className="text-base text-acc-text-muted font-medium">Báo cáo hiệu suất kinh doanh thời gian thực kết nối Backend.</p>
         </div>
         <button 

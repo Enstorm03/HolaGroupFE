@@ -24,6 +24,14 @@ const formatDisplayCode = (id, prefix = 'INV') => {
 /**
  * Chuẩn hóa trạng thái hóa đơn (VN <-> EN)
  */
+const safeNumber = (val) => {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return val;
+  const cleanStr = String(val).replace(/\./g, '').replace(/,/g, '');
+  const num = Number(cleanStr);
+  return isNaN(num) ? 0 : num;
+};
+
 const normalizeInvoiceStatus = (status) => {
   if (!status) return 'pending';
   const s = status.toLowerCase();
@@ -412,12 +420,12 @@ const mockDashboardStats = (timeframe = 'monthly', options = {}) => {
     });
   }
 
-  const totalRev = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.totalAmount) || 0), 0);
+  const totalRev = filteredInvoices.reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
   const totalDebt = filteredInvoices.reduce((sum, inv) => {
     const s = normalizeInvoiceStatus(inv.status);
-    return s !== 'paid' ? sum + ((Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0)) : sum;
+    return s !== 'paid' ? sum + (safeNumber(inv.totalAmount) - safeNumber(inv.paidAmount)) : sum;
   }, 0);
-  const totalCollected = filteredPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const totalCollected = filteredPayments.reduce((sum, p) => sum + safeNumber(p.amount), 0);
 
   return {
     totalRevenue: totalRev,
@@ -425,7 +433,7 @@ const mockDashboardStats = (timeframe = 'monthly', options = {}) => {
     totalCollected: totalCollected,
     pendingInvoices: filteredInvoices.length.toString(),
     cashBalance: dbData.stats.totalBalance || '1.250.000.000',
-    notifications: buildNotifications(), // Keep whole set for feed unless filtered feed requested
+    notifications: buildNotifications(),
   };
 };
 
@@ -548,28 +556,50 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
   const selectedYearsCount = options.filterYearsCount ? parseInt(options.filterYearsCount, 10) : 5;
   const filterWeekStr = options.filterWeek || `${now.getFullYear()}-W01`;
 
-  // Parse YYYY-MM-DD reliably
+  // Parse YYYY-MM-DD or DD/MM/YYYY reliably
   const parseDate = (dStr) => {
     if (!dStr) return null;
-    const [y, m, d] = dStr.split('-').map(Number);
-    return { y, m, d };
+    if (dStr instanceof Date) return { y: dStr.getFullYear(), m: dStr.getMonth() + 1, d: dStr.getDate() };
+    
+    const s = String(dStr).trim();
+    let parts = s.split(/[-/]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) { // YYYY-MM-DD
+        const [y, m, d] = parts.map(Number);
+        return { y, m, d: d || 1 };
+      } else if (parts[2].length === 4) { // DD-MM-YYYY
+        const [d, m, y] = parts.map(Number);
+        return { y, m, d };
+      }
+    }
+    return null;
   };
 
-  const getDebtAtDate = (targetDate) => {
+  const toDate = (dStr) => {
+    const pd = parseDate(dStr);
+    if (!pd) return null;
+    return new Date(pd.y, pd.m - 1, pd.d);
+  };
+
+  const getDebtAtSnapshot = (targetDate) => {
+    const targetTime = targetDate.getTime();
     return invoices.reduce((sum, inv) => {
-      const invDate = parseDate(inv.invoiceDate);
-      if (!invDate) return sum;
-      const target = new Date(targetDate);
-      const invoiceJSDate = new Date(invDate.y, invDate.m - 1, invDate.d);
-      
-      if (invoiceJSDate > target) return sum;
-      
-      const s = normalizeInvoiceStatus(inv.status);
-      if (s !== 'paid') {
-        const remaining = (Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0);
-        return sum + remaining;
-      }
-      return sum;
+      const dStr = inv.invoiceDate || inv.createAt || inv.createdAt;
+      const invDate = toDate(dStr);
+      if (!invDate || invDate.getTime() > targetTime) return sum;
+
+      const total = safeNumber(inv.totalAmount);
+      if (total <= 0) return sum;
+
+      const paidBySnapshot = payments
+        .filter(p => {
+          if (String(p.invoiceID) !== String(inv.invoiceID)) return false;
+          const pd = toDate(p.paymentDate || p.createAt || p.createdAt);
+          return pd && pd.getTime() <= targetTime;
+        })
+        .reduce((s, p) => s + safeNumber(p.amount), 0);
+
+      return sum + Math.max(0, total - paidBySnapshot);
     }, 0);
   };
 
@@ -579,47 +609,62 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
       
       const revenue = invoices
         .filter(i => {
-          const pd = parseDate(i.invoiceDate);
+          const pd = parseDate(i.invoiceDate || i.createAt || i.createdAt);
           return pd && pd.m === m && pd.y === selectedYear;
         })
-        .reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
+        .reduce((sum, i) => sum + safeNumber(i.totalAmount), 0);
         
       const collected = payments
         .filter(p => {
-          const pd = parseDate(p.paymentDate);
+          const pd = parseDate(p.paymentDate || p.createAt || p.createdAt);
           return pd && pd.m === m && pd.y === selectedYear;
         })
-        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+        .reduce((sum, p) => sum + safeNumber(p.amount), 0);
         
       let endOfMonth = new Date(selectedYear, m, 0, 23, 59, 59);
       if (selectedYear === now.getFullYear() && m === now.getMonth() + 1) endOfMonth = now;
-      const debt = getDebtAtDate(endOfMonth);
+      const debt = getDebtAtSnapshot(endOfMonth);
       
-      data.push({ label: `T${m}`, revenue, collected, expense: debt });
+      data.push({ 
+        label: `T${m}`, 
+        revenue, 
+        collected, 
+        expense: debt,
+        prevRevenue: data.length > 0 ? data[data.length - 1].revenue : null,
+        prevExpense: data.length > 0 ? data[data.length - 1].expense : null
+      });
     }
   } else if (timeframe === 'yearly' || timeframe === 'all') {
-    const currentYear = now.getFullYear();
-    const startYear = currentYear - selectedYearsCount + 1;
-    for (let y = startYear; y <= currentYear; y++) {
+    const endYear = options.filterYear ? parseInt(options.filterYear, 10) : now.getFullYear();
+    const startYear = endYear - selectedYearsCount + 1;
+    
+    for (let y = startYear; y <= endYear; y++) {
       const revenue = invoices
         .filter(i => {
-          const pd = parseDate(i.invoiceDate);
+          const pd = parseDate(i.invoiceDate || i.createAt || i.createdAt);
           return pd && pd.y === y;
         })
-        .reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
+        .reduce((sum, i) => sum + safeNumber(i.totalAmount), 0);
         
       const collected = payments
         .filter(p => {
-          const pd = parseDate(p.paymentDate);
+          const pd = parseDate(p.paymentDate || p.createAt || p.createdAt);
           return pd && pd.y === y;
         })
-        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+        .reduce((sum, p) => sum + safeNumber(p.amount), 0);
         
-      let endOfYear = new Date(y, 11, 31, 23, 59, 59);
-      if (y === currentYear) endOfYear = now;
-      const debt = getDebtAtDate(endOfYear);
+      const endOfYear = new Date(y, 11, 31, 23, 59, 59);
+      const snapshotDate = (y === now.getFullYear()) ? now : endOfYear;
+      const debt = getDebtAtSnapshot(snapshotDate);
       
-      data.push({ label: `${y}`, revenue, collected, expense: debt });
+      data.push({ 
+        label: `${y}`, 
+        revenue, 
+        collected, 
+        expense: debt,
+        prevRevenue: data.length > 0 ? data[data.length - 1].revenue : null,
+        prevExpense: data.length > 0 ? data[data.length - 1].expense : null
+      });
     }
   } else if (timeframe === 'weekly') {
     const [yStr, wStr] = filterWeekStr.split('-W');
@@ -646,15 +691,22 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
         return pd && pd.d === d.getDate() && pd.m === d.getMonth() + 1 && pd.y === d.getFullYear();
       };
 
-      const revenue = invoices.filter(inv => matchesDate(inv.invoiceDate)).reduce((sum, inv) => sum + (Number(inv.totalAmount) || 0), 0);
-      const collected = payments.filter(p => matchesDate(p.paymentDate)).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      const revenue = invoices.filter(inv => matchesDate(inv.invoiceDate)).reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
+      const collected = payments.filter(p => matchesDate(p.paymentDate)).reduce((sum, p) => sum + safeNumber(p.amount), 0);
       
       let endOfDay = new Date(d);
       endOfDay.setHours(23, 59, 59, 999);
       if (d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) endOfDay = now;
       
-      const debt = getDebtAtDate(endOfDay);
-      data.push({ label: dayNames[i], revenue, collected, expense: debt });
+      const debt = getDebtAtSnapshot(endOfDay);
+      data.push({ 
+        label: dayNames[i], 
+        revenue, 
+        collected, 
+        expense: debt,
+        prevRevenue: data.length > 0 ? data[data.length - 1].revenue : null,
+        prevExpense: data.length > 0 ? data[data.length - 1].expense : null
+      });
     }
   } else if (timeframe === 'daily') {
     // Legacy support for DailyActivityGrid if needed via index.jsx options
@@ -669,13 +721,13 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
         return pd && pd.d === day && pd.m === m && pd.y === y;
       };
 
-      const revenue = invoices.filter(inv => matchesDate(inv.invoiceDate)).reduce((sum, inv) => sum + (Number(inv.totalAmount) || 0), 0);
-      const collected = payments.filter(p => matchesDate(p.paymentDate)).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      const revenue = invoices.filter(inv => matchesDate(inv.invoiceDate)).reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
+      const collected = payments.filter(p => matchesDate(p.paymentDate)).reduce((sum, p) => sum + safeNumber(p.amount), 0);
       
       let endOfDay = new Date(y, m - 1, day, 23, 59, 59);
       if (day === now.getDate() && m === (now.getMonth() + 1) && y === now.getFullYear()) endOfDay = now;
       
-      const debt = getDebtAtDate(endOfDay);
+      const debt = getDebtAtSnapshot(endOfDay);
       const actual = revenue - debt;
       
       // Make heat intensity more sensitive so small amounts still pop (using square root scaling)

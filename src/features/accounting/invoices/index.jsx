@@ -994,7 +994,7 @@ const InvoiceList = () => {
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-1 shrink-0">
         <div className="space-y-2">
-          <h1 className="text-acc-text-main font-black text-3xl sm:text-4xl lg:text-[2rem] uppercase leading-tight">Hóa đơn Bán hàng</h1>
+          <h1 className="text-acc-text-main leading-tight font-black text-3xl sm:text-4xl lg:text-[2rem] uppercase tracking-tight">HÓA ĐƠN BÁN HÀNG</h1>
           <p className="text-acc-text-muted font-medium">Quản lý dòng tiền kinh doanh</p>
         </div>
         <button

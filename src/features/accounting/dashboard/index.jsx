@@ -195,7 +195,7 @@ const AccountingDashboard = () => {
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 px-1 shrink-0">
         <div className="space-y-2">
-          <h1 className="text-acc-text-main leading-tight font-black text-3xl sm:text-4xl lg:text-[2rem] uppercase tracking-tight">Trung tâm Tài chính</h1>
+          <h1 className="text-acc-text-main leading-tight font-black text-3xl sm:text-4xl lg:text-[2rem] uppercase tracking-tight">TRUNG TÂM TÀI CHÍNH</h1>
           <p className="text-sm sm:text-base text-acc-text-muted flex items-center gap-2 font-medium">
             Phân tích dữ liệu 
             <span className="text-acc-primary font-bold bg-blue-50 px-2.5 py-1 rounded-lg animate-fade-in" key={`${timeframe}-${selectedDay}-${filterWeek}-${filterYear}`}>

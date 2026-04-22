@@ -151,7 +151,7 @@ const DebtTracker = () => {
     <div className="flex-1 flex flex-col min-h-0 w-full animate-fade-up" style={{ gap: 'var(--space-md)' }}>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-8 shrink-0 px-4 md:px-2">
         <div className="space-y-1 md:space-y-2">
-          <h1 className="text-acc-text-main leading-tight font-black tracking-tight text-[1.75rem] md:text-[2.25rem]">Quản lý Công nợ</h1>
+          <h1 className="text-acc-text-main leading-tight font-black text-3xl sm:text-4xl lg:text-[2rem] uppercase tracking-tight">QUẢN LÝ CÔNG NỢ</h1>
           <p className="text-body-sm md:text-body-base text-acc-text-muted font-medium flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-acc-error animate-pulse shrink-0"></span>
             <span className="line-clamp-1 md:line-clamp-none">Theo dõi khoản nợ từ hóa đơn quá hạn.</span>
