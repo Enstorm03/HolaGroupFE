@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import accountingService from '../services/accountingService';
+import dbData from '../../../../db.json';
 import '../styles/accounting.css';
 
 const InvoiceDetail = () => {
@@ -40,7 +41,7 @@ const InvoiceDetail = () => {
   const percent = Math.min(100, Math.round((paid / (invoice.totalAmount || finalTotal)) * 100));
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50 gap-4 sm:gap-6 lg:gap-5 animate-fade-up pb-8 overflow-y-auto xl:overflow-visible no-scrollbar pr-1">
+    <div className="flex-1 flex flex-col h-full bg-slate-50 gap-4 sm:gap-6 lg:gap-5 animate-fade-up pb-8 overflow-y-auto xl:overflow-visible no-scrollbar pr-1 font-manrope">
       {/* HEADER SECTION & BREADCRUMBS */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 px-1 shrink-0">
         <div className="space-y-2">
@@ -114,15 +115,15 @@ const InvoiceDetail = () => {
           </div>
 
           {/* Line Items Table Container */}
-          <div className="flex-1 min-h-0 bg-white rounded-[2.5rem] border border-slate-200/60 shadow-2xl overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0 bg-white rounded-[2.5rem] border-2 border-slate-200 shadow-2xl overflow-hidden flex flex-col">
             <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-slate-200 p-2">
                <table className="w-full text-left border-collapse relative acc-responsive-table">
                   <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10 backdrop-blur-md">
                     <tr>
-                      <th className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em]">Danh mục hàng hóa</th>
-                      <th className="px-4 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] text-right">SL</th>
-                      <th className="px-4 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] text-right">Đơn giá</th>
-                      <th className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] text-right">Thành tiền</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] w-64">Danh mục hàng hóa</th>
+                      <th className="px-4 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] text-left">Sản phẩm</th>
+                      <th className="px-4 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] text-left w-40">SL</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-acc-text-muted uppercase tracking-[0.2em] text-left w-64">Thành tiền</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -134,17 +135,19 @@ const InvoiceDetail = () => {
                       </tr>
                     ) : invoice.items.map((item, i) => (
                       <tr key={i} className="hover:bg-slate-50/50 transition-all duration-200 group">
-                        <td className="px-6 py-5" data-label="Mô tả">
-                          <p className="text-sm font-black text-acc-text-main leading-tight italic">{item.name}</p>
-                          <p className="text-[10px] text-acc-text-light font-bold uppercase tracking-wider">{item.id || i + 1}</p>
+                        <td className="px-6 py-5" data-label="Danh mục">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-acc-primary font-black uppercase tracking-widest mb-0.5 whitespace-nowrap block w-fit max-w-[150px] truncate">
+                             {item.categoryName || dbData.categories?.find(c => c.categoryID === item.categoryID)?.categoryName || 'Sản phẩm'}
+                            </span>
+                            <p className="text-sm font-black text-acc-text-main leading-tight italic truncate max-w-[400px]" title={item.name}>{item.name}</p>
+                            <p className="text-[9px] text-slate-300 font-bold uppercase tracking-wider mt-1 whitespace-nowrap">Mã: {item.id || i + 1}</p>
+                          </div>
                         </td>
-                        <td className="px-4 py-5 text-right tabular-nums" data-label="Số lượng">
+                        <td className="px-4 py-5 text-left tabular-nums" data-label="Số lượng">
                           <span className="text-sm font-black text-acc-text-main">{item.quantity}</span>
                         </td>
-                        <td className="px-4 py-5 text-right text-sm font-black text-acc-text-muted tabular-nums" data-label="Đơn giá">
-                          {item.price?.toLocaleString()} VNĐ
-                        </td>
-                        <td className="px-6 py-5 text-right text-sm font-black text-acc-primary tabular-nums" data-label="Thành tiền">
+                        <td className="px-6 py-5 text-left text-sm font-black text-acc-primary tabular-nums" data-label="Thành tiền">
                           {(item.quantity * item.price)?.toLocaleString()} VNĐ
                         </td>
                       </tr>

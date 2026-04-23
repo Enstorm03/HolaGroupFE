@@ -56,11 +56,17 @@ const CustomTooltip = ({ active, payload, label }) => {
             </span>
           </div>
 
-          <div className="pt-2 mt-2 border-t border-slate-50 flex items-center justify-between">
-            <span className="text-[10px] font-black text-acc-primary uppercase">Thực thu:</span>
-            <span className="text-sm font-black text-acc-primary">
-              {(data.collected || 0).toLocaleString()} <small className="text-[10px] opacity-50">VNĐ</small>
-            </span>
+          <div className="pt-2 mt-2 border-t border-slate-50 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-slate-400 uppercase">Hóa đơn:</span>
+              <span className="text-[11px] font-black text-slate-700">{data.invoiceCount || 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-acc-primary uppercase">Thực thu:</span>
+              <span className="text-sm font-black text-acc-primary">
+                {(data.collected || 0).toLocaleString()} <small className="text-[10px] opacity-50">VNĐ</small>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -69,7 +75,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-const RevenueAreaChart = ({ data, loading }) => {
+const RevenueAreaChart = ({ data, loading, timeframe }) => {
   const containerRef = React.useRef(null);
   const [width, setWidth] = React.useState(0);
 

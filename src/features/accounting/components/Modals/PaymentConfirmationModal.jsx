@@ -31,7 +31,8 @@ const PaymentConfirmationModal = ({ isOpen, onClose, invoice, onConfirm, loading
       method,
       note,
       nextPaymentDate: isPartial ? nextPaymentDate : null,
-      paymentDate: new Date().toISOString()
+      paymentDate: new Date().toISOString().split('T')[0], // Match SQL DATE type
+      status: 'COMPLETED' // Default status for new payment
     });
   };
 

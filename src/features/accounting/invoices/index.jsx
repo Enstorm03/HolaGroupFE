@@ -91,68 +91,254 @@ const StatusBadgeDropdown = ({ status, onStatusChange, onOpenChange, openUp = fa
   );
 };
 
-const SearchableCustomerSelect = ({ selectedCustomerID, onSelect }) => {
+const SearchableCustomerSelect = ({ selectedCustomer, onSelect }) => {
   const [isOpen, setIsOpen] = useState(false);
   const customers = dbData.customers || [];
   const wrapperRef = useRef(null);
-  
+
+  // Helper to get full name
+  const getFullName = (c) => c.companyName || `${c.lastName} ${c.firstName}`;
+
+  // Initialize searchTerm with the name if selectedCustomer is an ID
+  const getInitialName = () => {
+    if (!selectedCustomer) return '';
+    const found = customers.find(c => c.customerID === Number(selectedCustomer));
+    return found ? getFullName(found) : selectedCustomer;
+  };
+
+  const [searchTerm, setSearchTerm] = useState(getInitialName());
+
   useEffect(() => {
     function handleClickOutside(event) { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [wrapperRef]);
-
-  const selectedName = customers.find(c => c.customerID === selectedCustomerID)?.customerName || '';
-  const [searchTerm, setSearchTerm] = useState(selectedName);
+  }, []);
 
   useEffect(() => {
-    setSearchTerm(selectedName);
-  }, [selectedName]);
+    setSearchTerm(getInitialName());
+  }, [selectedCustomer]);
 
-  const filtered = customers.filter(c => 
-    c.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = customers.filter(c => {
+    const name = getFullName(c);
+    return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.phoneNumber && c.phoneNumber.includes(searchTerm));
+  });
 
   return (
-    <div className="relative group" ref={wrapperRef}>
-      <span aria-hidden="true" className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl group-focus-within:text-acc-primary transition-colors z-10">person</span>
-      <input 
-        type="text" 
-        placeholder="Tìm hoặc nhập tên khách hàng…" 
-        autoComplete="off" 
-        spellCheck={false} 
-        className="w-full bg-slate-50 border-2 border-slate-200 focus:border-acc-primary/30 rounded-2xl py-3 pl-12 pr-4 text-sm font-black text-acc-text-main outline-none focus-visible:ring-4 focus-visible:ring-acc-primary/10 transition-[border-color,box-shadow,background-color] focus:bg-white" 
-        value={searchTerm} 
-        onFocus={() => setIsOpen(true)} 
-        onChange={(e) => { 
-          setSearchTerm(e.target.value); 
-          setIsOpen(true); 
-          if (!e.target.value) onSelect(null);
-        }} 
-      />
-      {isOpen && (searchTerm || filtered.length > 0) && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 z-[50] max-h-60 overflow-y-auto no-scrollbar py-2 animate-fade-in">
-          {filtered.map((c) => (
-            <button 
-              key={c.customerID} 
-              type="button" 
-              className="w-full text-left px-5 py-3 text-sm font-black text-acc-text-main hover:bg-slate-50 hover:text-acc-primary transition-colors flex items-center justify-between" 
-              onClick={() => { 
-                onSelect(c.customerID); 
-                setSearchTerm(c.customerName);
-                setIsOpen(false); 
-              }}
-            >
-              <div className="flex flex-col">
-                <span>{c.customerName}</span>
-                <span className="text-[10px] text-slate-400">{c.email || c.phoneNumber}</span>
-              </div>
-              {selectedCustomerID === c.customerID && <span className="material-symbols-outlined text-acc-primary text-sm">check_circle</span>}
-            </button>
-          ))}
+    <div className="relative" ref={wrapperRef}>
+      <div className="relative group">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-300 group-focus-within:text-acc-primary transition-colors">person</span>
+        <input 
+          type="text"
+          placeholder="Tìm hoặc nhập tên khách hàng mới..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsOpen(true);
+            onSelect(e.target.value); // Allow free text
+          }}
+          onFocus={() => setIsOpen(true)}
+          className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl py-3.5 pl-12 pr-10 text-sm font-black text-acc-text-main outline-none focus:border-acc-primary/30 focus:bg-white transition-all placeholder:text-slate-300"
+        />
+        {searchTerm && (
+          <button 
+            type="button"
+            onClick={() => { setSearchTerm(''); onSelect(''); }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-rose-500 transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">cancel</span>
+          </button>
+        )}
+      </div>
+
+      {isOpen && filtered.length > 0 && (
+        <div className="absolute z-[200] top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-fade-in">
+          <div className="max-h-60 overflow-y-auto no-scrollbar p-1">
+            {filtered.map(c => {
+              const fullName = getFullName(c);
+              return (
+                <button
+                  key={c.customerID}
+                  type="button"
+                  onClick={() => {
+                    onSelect(c.customerID);
+                    setSearchTerm(fullName);
+                    setIsOpen(false);
+                  }}
+                  className="w-full text-left p-3 hover:bg-slate-50 rounded-xl flex items-center justify-between transition-colors group"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-acc-text-main group-hover:text-acc-primary">{fullName}</span>
+                    <span className="text-[10px] text-slate-400">{c.phoneNumber || 'Không có SĐT'}</span>
+                  </div>
+                  {Number(selectedCustomer) === c.customerID && <span className="material-symbols-outlined text-acc-primary text-base">check_circle</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
+  );
+};
+
+const ProductCategoryLinkedSelect = ({ 
+  selectedCategoryID, 
+  selectedProductID, 
+  selectedName,
+  onSelect 
+}) => {
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [isCatOpen, setIsCatOpen] = useState(false);
+  const [isProdOpen, setIsProdOpen] = useState(false);
+  const [catSearch, setCatSearch] = useState('');
+  const [prodSearch, setProdSearch] = useState(selectedName || '');
+
+  const catRef = useRef(null);
+  const prodRef = useRef(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [cats, prods] = await Promise.all([
+        accountingService.getCategories(),
+        accountingService.getProducts()
+      ]);
+      setCategories(cats);
+      setProducts(prods);
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (catRef.current && !catRef.current.contains(e.target)) setIsCatOpen(false);
+      if (prodRef.current && !prodRef.current.contains(e.target)) setIsProdOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (selectedCategoryID) {
+      const cat = categories.find(c => c.categoryID === selectedCategoryID);
+      if (cat) setCatSearch(cat.categoryName);
+    } else {
+      setCatSearch('');
+    }
+  }, [selectedCategoryID, categories]);
+
+  useEffect(() => {
+    if (selectedProductID) {
+      const prod = products.find(p => p.productID === selectedProductID);
+      if (prod) setProdSearch(prod.productName);
+    } else if (!selectedName) {
+      setProdSearch('');
+    }
+  }, [selectedProductID, products, selectedName]);
+
+  const filteredCategories = categories.filter(c => 
+    c.categoryName.toLowerCase().includes(catSearch.toLowerCase())
+  );
+
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.productName.toLowerCase().includes(prodSearch.toLowerCase());
+    const matchesCategory = selectedCategoryID ? p.categoryID === selectedCategoryID : true;
+    return matchesSearch && matchesCategory;
+  });
+
+  return (
+    <>
+      {/* Category Cell */}
+      <td className="p-3 relative" style={{ zIndex: 60 }} ref={catRef} data-label="Danh mục">
+        <div className="relative group">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-300 text-sm group-focus-within:text-acc-primary transition-colors">category</span>
+          <input 
+            type="text"
+            placeholder="Danh mục..."
+            value={catSearch}
+            onChange={(e) => {
+              setCatSearch(e.target.value);
+              setIsCatOpen(true);
+              onSelect({ categoryID: null, categoryName: e.target.value });
+            }}
+            onFocus={() => setIsCatOpen(true)}
+            className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-2.5 pl-9 pr-3 text-[12px] font-black focus:border-acc-primary/30 focus:bg-white outline-none transition-all placeholder:text-slate-300"
+          />
+        </div>
+        {isCatOpen && filteredCategories.length > 0 && (
+          <div className="absolute z-[160] top-full left-0 w-64 bg-white shadow-2xl border border-slate-100 rounded-xl mt-1 max-h-56 overflow-y-auto no-scrollbar animate-fade-in p-1">
+            {filteredCategories.map(cat => (
+              <button
+                key={cat.categoryID}
+                type="button"
+                onClick={() => {
+                  onSelect({ categoryID: cat.categoryID, categoryName: cat.categoryName });
+                  setCatSearch(cat.categoryName);
+                  setIsCatOpen(false);
+                }}
+                className={`w-full px-3 py-2 text-left text-[10px] font-black uppercase tracking-tight rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap overflow-hidden text-ellipsis ${selectedCategoryID === cat.categoryID ? 'text-acc-primary bg-blue-50/50' : 'text-slate-600'}`}
+              >
+                {cat.categoryName}
+              </button>
+            ))}
+          </div>
+        )}
+      </td>
+
+      {/* Product Cell */}
+      <td className="p-3 relative" style={{ zIndex: 50 }} ref={prodRef} data-label="Sản phẩm">
+        <div className="relative group">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-300 text-sm group-focus-within:text-acc-primary transition-colors">inventory_2</span>
+          <input 
+            type="text"
+            placeholder="Tìm sản phẩm hoặc nhập tên mới..."
+            value={prodSearch}
+            onChange={(e) => {
+              setProdSearch(e.target.value);
+              setIsProdOpen(true);
+              onSelect({ name: e.target.value });
+            }}
+            onFocus={() => setIsProdOpen(true)}
+            className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-2.5 pl-9 pr-3 text-[12px] font-black focus:border-acc-primary/30 focus:bg-white outline-none transition-all placeholder:text-slate-300"
+          />
+        </div>
+        {isProdOpen && (
+          <div className="absolute z-[160] top-full left-0 w-full md:min-w-[400px] bg-white shadow-2xl border border-slate-100 rounded-xl mt-1 max-h-64 overflow-y-auto no-scrollbar animate-fade-in p-1">
+            {filteredProducts.length === 0 ? (
+              <div className="p-4 text-center text-slate-400 text-[9px] font-black uppercase">Không tìm thấy sản phẩm cũ</div>
+            ) : filteredProducts.map(prod => (
+              <button
+                key={prod.productID}
+                type="button"
+                onClick={() => {
+                  const cat = categories.find(c => c.categoryID === prod.categoryID);
+                  onSelect({ 
+                    productID: prod.productID, 
+                    categoryID: prod.categoryID,
+                    categoryName: cat?.categoryName,
+                    name: prod.productName,
+                    price: prod.salePrice
+                  });
+                  setIsProdOpen(false);
+                }}
+                className={`w-full px-3 py-2.5 text-left rounded-lg hover:bg-slate-50 transition-colors border-b border-slate-50/50 last:border-0 ${selectedProductID === prod.productID ? 'bg-blue-50/30' : ''}`}
+              >
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[12px] font-black text-acc-text-main truncate">{prod.productName}</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                      {categories.find(c => c.categoryID === prod.categoryID)?.categoryName || 'Sản phẩm'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black text-acc-primary tabular-nums">{prod.salePrice.toLocaleString()} VNĐ</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </td>
+    </>
   );
 };
 
@@ -168,7 +354,7 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
     await exportToPDF('printable-area', fileName);
   };
 
-  const subtotal = (invoice.items || []).reduce((sum, item) => sum + (item.quantity * item.price), 0);
+  const subtotal = (invoice.items || []).reduce((sum, item) => sum + (item.quantity * (item.unitPrice || item.price || 0)), 0);
   const adjustment = (invoice.fees?.shipping || 0) + (invoice.fees?.handling || 0) + (invoice.fees?.insurance || 0) - (invoice.fees?.discount || 0);
   const finalTotal = subtotal + adjustment;
   const paid = invoice.paidAmount || 0;
@@ -181,7 +367,7 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
       <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md" onClick={onClose} />
 
       <div className="flex items-center justify-center p-0 sm:p-4 pointer-events-none min-h-full">
-        <div className="relative w-full max-w-4xl bg-white sm:bg-white/95 sm:backdrop-blur-xl rounded-none sm:rounded-[2.5rem] shadow-none sm:shadow-[0_40px_100px_rgba(0,0,0,0.2)] sm:border border-white/20 overflow-hidden sm:overflow-hidden animate-zoom-in flex flex-col h-full sm:h-auto sm:max-h-[85vh] pointer-events-auto acc-modal-content">
+        <div className="relative w-full max-w-4xl bg-white sm:bg-white/95 sm:backdrop-blur-xl rounded-none sm:rounded-[2.5rem] shadow-none sm:shadow-[0_40px_100px_rgba(0,0,0,0.2)] sm:border border-white/20 overflow-hidden sm:overflow-hidden animate-zoom-in flex flex-col h-full sm:h-auto sm:max-h-[85vh] pointer-events-auto acc-modal-content font-manrope">
           <div className="px-6 sm:px-8 py-6 sm:py-8 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white/50 gap-4 sm:gap-0 relative overflow-hidden">
             <div className="flex items-center gap-3 sm:gap-5">
               <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-acc-primary/10 flex items-center justify-center text-acc-primary">
@@ -268,11 +454,11 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                     </div>
                     <div className="flex justify-between items-end">
                       <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Đã thu</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Đã thu</p>
                         <p className="text-xl font-black text-emerald-600">{paid.toLocaleString()} VNĐ</p>
                       </div>
                       <div className="space-y-1 text-right">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Còn nợ</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Còn nợ</p>
                         <p className="text-xl font-black text-rose-500">{remaining.toLocaleString()} VNĐ</p>
                       </div>
                     </div>
@@ -284,14 +470,14 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                 <h3 className="text-xs font-black text-acc-text-main uppercase tracking-widest flex items-center gap-2 ml-1">
                   <span className="w-1 h-3 bg-acc-primary rounded-full"></span> Danh mục Sản phẩm
                 </h3>
-                <div className="rounded-2xl sm:rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm bg-white acc-inner-scroll-mobile">
+                <div className="rounded-2xl sm:rounded-[2rem] border-2 border-slate-200 overflow-hidden shadow-sm bg-white acc-inner-scroll-mobile">
                   <table className="w-full text-sm acc-responsive-table acc-table-detail">
                     <thead className="bg-slate-50/50">
                       <tr>
-                        <th scope="col" className="p-5 text-[10px] font-black uppercase text-acc-text-light text-left">Mô tả</th>
-                        <th scope="col" className="p-5 text-[10px] font-black uppercase text-acc-text-light text-center w-24">Số lượng</th>
-                        <th scope="col" className="p-5 text-[10px] font-black uppercase text-acc-text-light text-right w-40">Đơn giá</th>
-                        <th scope="col" className="p-5 text-[10px] font-black uppercase text-acc-text-light text-right w-48">Thành tiền</th>
+                        <th scope="col" className="p-5 text-[10px] font-black uppercase text-acc-text-light text-left w-56">Danh mục</th>
+                        <th scope="col" className="p-5 text-[10px] font-black uppercase text-acc-text-light text-left">Sản phẩm</th>
+                        <th scope="col" className="p-5 text-[10px] font-black uppercase text-acc-text-light text-left w-40">Số lượng</th>
+                        <th scope="col" className="p-5 text-[10px] font-black uppercase text-acc-text-light text-left w-64">Thành tiền</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -303,10 +489,18 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                         </tr>
                       ) : invoice.items.map((item, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="p-5 text-sm font-black text-acc-text-main" data-label="Tên sản phẩm">{item.name}</td>
-                          <td className="p-5 text-center font-bold text-slate-500" data-label="Số lượng">{item.quantity}</td>
-                          <td className="p-5 text-right font-bold text-slate-500 tabular-nums" data-label="Đơn giá">{item.price?.toLocaleString()} VNĐ</td>
-                          <td className="p-5 text-right font-black text-acc-primary tabular-nums" data-label="Thành tiền">{(item.quantity * item.price)?.toLocaleString()} VNĐ</td>
+                          <td className="p-5" data-label="Danh mục">
+                            <span className="text-[10px] text-acc-primary font-black uppercase tracking-widest px-2 py-1 bg-acc-primary/5 rounded-lg whitespace-nowrap block w-fit max-w-[150px] truncate">
+                              {item.categoryName || dbData.categories?.find(c => c.categoryID === item.categoryID)?.categoryName || 'Sản phẩm'}
+                            </span>
+                          </td>
+                          <td className="p-5 text-sm font-black text-acc-text-main" data-label="Sản phẩm">
+                            <div className="truncate max-w-[200px] md:max-w-[300px] lg:max-w-[400px]" title={item.name}>
+                              {item.name}
+                            </div>
+                          </td>
+                          <td className="p-5 text-left font-bold text-slate-500" data-label="Số lượng">{item.quantity}</td>
+                          <td className="p-5 text-left font-black text-acc-primary tabular-nums" data-label="Thành tiền">{(item.quantity * (item.unitPrice || item.price || 0))?.toLocaleString()} VNĐ</td>
                         </tr>
                       ))}
                     </tbody>
@@ -624,38 +818,67 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
           notes: initialData.notes || '',
           paidAmount: initialData.paidAmount || 0,
           finalDueDate: toISODate(initialData.finalDueDate) || '',
-          items: initialData.items ? initialData.items.map((it, idx) => ({ ...it, id: it.id || (Date.now() + idx) })) : [{ id: Date.now(), name: '', quantity: 1, price: 0 }]
+          salesperson: initialData.userID || '', // Lưu thông tin nhân viên bán hàng
+          items: initialData.items ? initialData.items.map((it, idx) => ({ ...it, id: it.id || (Date.now() + idx) })) : [{ id: Date.now(), name: '', quantity: 1, unitPrice: 0 }]
         });
       } else {
-        setFormData({ customer: '', orderID: '', date: new Date().toISOString().split('T')[0], dueDate: '', notes: '', paidAmount: 0, finalDueDate: '', items: [{ id: Date.now(), name: '', quantity: 1, price: 0 }] });
+        setFormData({ customer: '', orderID: '', salesperson: '', date: new Date().toISOString().split('T')[0], dueDate: '', notes: '', paidAmount: 0, finalDueDate: '', items: [{ id: Date.now(), name: '', quantity: 1, unitPrice: 0 }] });
       }
     }
   }, [isOpen, initialData]);
 
-  const addItem = () => { setFormData(prev => ({ ...prev, items: [...prev.items, { id: Date.now(), name: '', quantity: 1, price: 0 }] })); };
+  const addItem = () => { setFormData(prev => ({ ...prev, items: [...prev.items, { id: Date.now(), name: '', quantity: 1, unitPrice: 0, categoryID: null, productID: null }] })); };
   const removeItem = (id) => { if (formData.items.length > 1) { setFormData(prev => ({ ...prev, items: prev.items.filter(item => item.id !== id) })); } };
   const updateItem = (id, field, value) => { setFormData(prev => ({ ...prev, items: prev.items.map(item => item.id === id ? { ...item, [field]: value } : item) })); };
-  const totalAmount = formData.items.reduce((sum, item) => sum + (Number(item.quantity || 0) * (Number(item.price) || 0)), 0);
+  const updateItemData = (id, data) => { setFormData(prev => ({ ...prev, items: prev.items.map(item => item.id === id ? { ...item, ...data } : item) })); };
+  const totalAmount = formData.items.reduce((sum, item) => sum + (Number(item.quantity || 0) * (Number(item.unitPrice || item.price || 0))), 0);
   const remaining = Math.max(0, totalAmount - formData.paidAmount);
+
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validate if customer exists in database
+    const customerList = dbData.customers || [];
+    const enteredCustomer = formData.customer;
+    
+    // Helper to get full name (redefined here or moved to upper scope if needed)
+    const getFullName = (c) => c.companyName || `${c.lastName} ${c.firstName}`;
+    
+    const exists = customerList.some(c => 
+      c.customerID === Number(enteredCustomer) || 
+      getFullName(c).toLowerCase() === enteredCustomer?.toString().toLowerCase()
+    );
+
     if (!formData.customer || !formData.orderID?.toString().trim()) {
       if (showToast) showToast("Vui lòng điền đầy đủ thông tin khách hàng và mã đơn hàng", "error");
       return;
     }
+
+    if (!exists) {
+      setShowErrorPopup(true);
+      return;
+    }
     onSave({
       ...initialData,
-      customerID: formData.customer,
-      orderID: formData.orderID,
-      invoiceDate: formData.date, // Store as ISO for SQL
+      customerID: Number(formData.customer),
+      orderID: Number(formData.orderID) || formData.orderID, 
+      userID: Number(formData.salesperson), // Gửi ID nhân viên bán hàng
+      invoiceDate: formData.date,
       dueDate: formData.dueDate,
       paidAmount: Number(formData.paidAmount),
-      finalDueDate: formData.finalDueDate,
       totalAmount,
-      items: formData.items,
+      items: formData.items.map(item => ({
+        ...item,
+        productID: Number(item.productID),
+        categoryID: Number(item.categoryID),
+        unitPrice: Number(item.unitPrice || item.price),
+        quantity: Number(item.quantity)
+      })),
       notes: formData.notes,
-      status: 'Chờ thanh toán'
+      status: 'PENDING',
+      createAt: new Date().toISOString().split('T')[0]
     });
     onClose();
   };
@@ -670,7 +893,7 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
           <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-slate-100 flex items-center justify-between bg-white sm:bg-slate-50/50 shrink-0">
             <div className="space-y-0.5 sm:space-y-1">
               <h2 className="text-lg sm:text-xl font-black text-acc-text-main uppercase tracking-tight">{title}</h2>
-              <div className="flex items-center gap-2 text-[9px] font-bold text-acc-text-light uppercase tracking-widest sm:hidden">
+              <div className="flex items-center gap-2 text-[9px] font-bold text-acc-primary uppercase tracking-widest sm:hidden">
                 <span className="w-1.5 h-1.5 rounded-full bg-acc-primary animate-pulse"></span> Nhập dữ liệu thời gian thực
               </div>
             </div>
@@ -681,41 +904,54 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
 
           <div className="flex-1 overflow-y-auto p-5 sm:p-8 no-scrollbar acc-modal-scroll-area" style={{ WebkitOverflowScrolling: 'touch' }}>
             <form className="space-y-8" id="invoice-form" onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Khách hàng</label><SearchableCustomerSelect onSelect={(val) => setFormData(prev => ({ ...prev, customer: val }))} selectedCustomer={formData.customer} /></div>
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Mã đơn hàng</label><input type="text" value={formData.orderID} onChange={(e) => setFormData(prev => ({ ...prev, orderID: e.target.value }))} autoComplete="off" spellCheck={false} placeholder="Ví dụ: HOLA-2024-001" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-acc-primary/30 rounded-2xl py-3 px-5 text-sm font-black focus:ring-4 focus:ring-acc-primary/5 outline-none transition-all focus:bg-white placeholder:text-slate-300" /></div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Khách hàng</label><SearchableCustomerSelect onSelect={(val) => setFormData(prev => ({ ...prev, customer: val }))} selectedCustomer={formData.customer} /></div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Nhân viên bán hàng</label>
+                  <select 
+                    value={formData.salesperson} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, salesperson: e.target.value }))}
+                    className="w-full bg-slate-50 border-2 border-slate-200 focus:border-acc-primary/30 rounded-2xl py-3 px-5 text-sm font-black outline-none transition-all focus:bg-white"
+                  >
+                    <option value="">Chọn nhân viên...</option>
+                    {(dbData.users || []).filter(u => u.roleID === 2).map(u => (
+                      <option key={u.userID} value={u.userID}>{u.lastName} {u.firstName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Mã đơn hàng</label><input type="text" value={formData.orderID} onChange={(e) => setFormData(prev => ({ ...prev, orderID: e.target.value }))} autoComplete="off" spellCheck={false} placeholder="Ví dụ: ORD-001" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-acc-primary/30 rounded-2xl py-3 px-5 text-sm font-black focus:ring-4 focus:ring-acc-primary/5 outline-none transition-all focus:bg-white placeholder:text-slate-300" /></div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Ngày lập</label><input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-slate-200 focus:border-acc-primary/30 transition-all focus:bg-white" /></div>
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Hạn thanh toán đợt 1</label><input type="date" value={formData.dueDate} min={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-slate-200 focus:border-acc-primary/30 transition-all focus:bg-white" /></div>
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Ngày lập</label><input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-slate-200 focus:border-acc-primary/30 transition-all focus:bg-white" /></div>
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Hạn thanh toán đợt 1</label><input type="date" value={formData.dueDate} min={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-slate-200 focus:border-acc-primary/30 transition-all focus:bg-white" /></div>
               </div>
 
-              <div className="p-6 sm:p-8 rounded-[2rem] bg-indigo-50/40 border border-indigo-100/50 space-y-6">
+              <div className="p-6 sm:p-8 rounded-[2rem] bg-acc-primary/5 border border-acc-primary/10 space-y-6">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-acc-primary/10 text-acc-primary flex items-center justify-center">
                     <span className="material-symbols-outlined text-base">payments</span>
                   </div>
-                  <h3 className="text-xs font-black text-indigo-700 uppercase tracking-widest">Tiến độ thanh toán & Kỳ hạn nốt</h3>
+                  <h3 className="text-xs font-black text-acc-primary uppercase tracking-widest">Tiến độ thanh toán & Kỳ hạn nốt</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">Số tiền đã trả trước (VNĐ)</label>
-                    <input type="number" placeholder="Nhập số tiền đã thu..." className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-slate-200 focus:border-indigo-400 outline-none text-sm font-black transition-all text-acc-primary shadow-sm" value={formData.paidAmount} onChange={e => setFormData({ ...formData, paidAmount: parseFloat(e.target.value) || 0 })} />
+                    <label className="text-[10px] font-black text-acc-text-main uppercase tracking-widest ml-1">Số tiền đã trả trước (VNĐ)</label>
+                    <input type="number" placeholder="Nhập số tiền đã thu..." className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-slate-200 focus:border-acc-primary/40 outline-none text-sm font-black transition-all text-acc-primary shadow-sm" value={formData.paidAmount} onChange={e => setFormData({ ...formData, paidAmount: parseFloat(e.target.value) || 0 })} />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">Hạn thanh toán phần còn lại</label>
+                    <label className="text-[10px] font-black text-acc-text-main uppercase tracking-widest ml-1">Hạn thanh toán phần còn lại</label>
                     <div className="relative">
-                      <input type="date" className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-slate-200 focus:border-indigo-400 outline-none text-sm font-black transition-all text-acc-text-main shadow-sm" min={formData.dueDate || formData.date} value={formData.finalDueDate} onChange={e => setFormData({ ...formData, finalDueDate: e.target.value })} />
+                      <input type="date" className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-slate-200 focus:border-acc-primary/40 outline-none text-sm font-black transition-all text-acc-text-main shadow-sm" min={formData.dueDate || formData.date} value={formData.finalDueDate} onChange={e => setFormData({ ...formData, finalDueDate: e.target.value })} />
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-between items-center px-6 py-4 rounded-2xl bg-white/50 border border-indigo-100">
+                <div className="flex justify-between items-center px-6 py-4 rounded-2xl bg-white/50 border border-acc-primary/10">
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Dư nợ còn lại</span>
-                    <span className="text-base font-black text-acc-text-main">{(totalAmount - formData.paidAmount).toLocaleString()} VNĐ</span>
+                    <span className="text-[9px] font-bold text-acc-text-main uppercase tracking-widest">Dư nợ còn lại</span>
+                    <span className="text-base font-black text-acc-primary">{(totalAmount - formData.paidAmount).toLocaleString()} VNĐ</span>
                   </div>
-                  <div className="text-[10px] font-black text-indigo-600 uppercase bg-indigo-100/50 px-3 py-1 rounded-lg">
+                  <div className="text-[10px] font-black text-acc-primary uppercase bg-acc-primary/10 px-3 py-1 rounded-lg">
                     {Math.round((formData.paidAmount / totalAmount) * 100) || 0}% Đã thu
                   </div>
                 </div>
@@ -723,26 +959,49 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between"><h3 className="text-xs font-black uppercase text-acc-text-main">Sản phẩm / Dịch vụ</h3><button type="button" onClick={addItem} className="px-4 py-2 rounded-xl bg-acc-primary/5 text-[10px] font-black text-acc-primary uppercase flex items-center gap-1 hover:bg-acc-primary/10 transition-all active:scale-95"><span className="material-symbols-outlined text-sm">add_circle</span> Thêm dòng</button></div>
-                <div className="rounded-2xl border border-slate-100 overflow-hidden shadow-sm bg-white">
-                  <div className="overflow-x-auto no-scrollbar">
+                <div className="rounded-2xl border-2 border-slate-200 bg-white relative">
+                  <div className="no-scrollbar">
                     <table className="w-full text-sm acc-responsive-table acc-table-detail">
                       <thead className="bg-slate-50">
                         <tr>
-                          <th scope="col" className="p-4 text-[10px] font-black uppercase text-slate-400 text-left">Tên</th>
-                          <th scope="col" className="p-4 text-[10px] font-black uppercase text-slate-400 text-right w-20">SL</th>
-                          <th scope="col" className="p-4 text-[10px] font-black uppercase text-slate-400 text-right w-32">Đơn giá</th>
-                          <th scope="col" className="p-4 text-[10px] font-black uppercase text-slate-400 text-right w-40">Thành tiền</th>
+                          <th scope="col" className="p-4 text-[11px] font-black uppercase text-acc-text-main text-left w-52">Danh mục</th>
+                          <th scope="col" className="p-4 text-[11px] font-black uppercase text-acc-text-main text-left">Sản phẩm</th>
+                          <th scope="col" className="p-4 text-[11px] font-black uppercase text-acc-text-main text-left w-32">SL</th>
+                          <th scope="col" className="p-4 text-[11px] font-black uppercase text-acc-text-main text-left w-48">Thành tiền</th>
                           <th scope="col" className="p-4 w-10"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
                         {formData.items.map((item) => (
                           <tr key={item.id} className="hover:bg-slate-50/30 transition-colors">
-                            <td className="p-3" data-label="Tên sản phẩm"><input type="text" placeholder="Tên sản phẩm..." value={item.name} onChange={(e) => updateItem(item.id, 'name', e.target.value)} className="w-full bg-transparent px-2 py-2 font-black outline-none border-b-2 border-slate-100 focus:border-acc-primary/40 transition-colors" /></td>
-                            <td className="p-3 text-right" data-label="Số lượng"><input type="number" value={item.quantity} onChange={(e) => updateItem(item.id, 'quantity', e.target.value)} className="w-16 bg-transparent text-right font-black outline-none border-b-2 border-slate-100 focus:border-acc-primary/40 ml-auto transition-colors" /></td>
-                            <td className="p-3 text-right" data-label="Đơn giá"><input type="text" value={item.price ? Number(item.price).toLocaleString() : ''} onChange={(e) => updateItem(item.id, 'price', e.target.value.replace(/\D/g, ''))} className="w-28 bg-transparent text-right font-black outline-none border-b-2 border-slate-100 focus:border-acc-primary/40 ml-auto transition-colors" /></td>
-                            <td className="p-3 text-right font-black text-acc-primary" data-label="Thành tiền">{(item.quantity * item.price).toLocaleString()} <span className="text-[9px] opacity-40">VNĐ</span></td>
-                            <td className="p-3" data-label="Xóa"><button type="button" aria-label="Xóa dòng" onClick={() => removeItem(item.id)} className="w-8 h-8 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center"><span aria-hidden="true" className="material-symbols-outlined text-lg">delete</span></button></td>
+                            <ProductCategoryLinkedSelect 
+                              selectedCategoryID={item.categoryID}
+                              selectedProductID={item.productID}
+                              selectedName={item.name}
+                              onSelect={(data) => updateItemData(item.id, data)}
+                            />
+                            <td className="p-3 text-left" data-label="Số lượng">
+                              <input 
+                                type="number" 
+                                value={item.quantity} 
+                                onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))} 
+                                className="w-24 bg-slate-50 rounded-xl px-4 py-2 text-left font-black outline-none border-2 border-slate-200 focus:border-acc-primary/40 transition-all" 
+                              />
+                            </td>
+                            <td className="p-3 text-left font-black text-acc-primary tabular-nums" data-label="Thành tiền">
+                              {(item.quantity * (item.unitPrice || item.price || 0)).toLocaleString()} 
+                              <span className="text-[9px] opacity-40 ml-1">VNĐ</span>
+                            </td>
+                            <td className="p-3 text-center" data-label="Thao tác">
+                              <button 
+                                type="button" 
+                                aria-label="Xóa dòng" 
+                                onClick={() => removeItem(item.id)} 
+                                className="w-9 h-9 rounded-xl text-slate-400 border-2 border-slate-200 hover:text-rose-500 hover:border-rose-200 hover:bg-rose-50 transition-all flex items-center justify-center mx-auto shadow-sm active:scale-90"
+                              >
+                                <span aria-hidden="true" className="material-symbols-outlined text-lg">delete</span>
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -752,15 +1011,15 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
               </div>
 
               <div className="space-y-2 pb-10">
-                <label className="text-[10px] font-black uppercase text-acc-text-light ml-1">Ghi chú nội bộ</label>
-                <textarea value={formData.notes} onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))} rows="3" className="w-full bg-slate-50 rounded-[1.8rem] py-4 px-6 text-sm font-medium text-acc-text-main outline-none border-2 border-transparent focus:border-acc-primary/10 focus:bg-white transition-[border-color,background-color] resize-none placeholder:text-slate-300" placeholder="Thông tin bổ sung…" />
+                <label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Ghi chú nội bộ</label>
+                <textarea value={formData.notes} onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))} rows="3" className="w-full bg-slate-50 rounded-[1.8rem] py-4 px-6 text-sm font-medium text-acc-text-main outline-none border-2 border-slate-200 focus:border-acc-primary/30 focus:bg-white transition-[border-color,background-color] resize-none placeholder:text-slate-300" placeholder="Thông tin bổ sung…" />
               </div>
             </form>
           </div>
 
           <div className="px-6 sm:px-8 py-5 sm:py-6 border-t border-slate-100 flex flex-row items-center justify-between bg-slate-50/50 sm:bg-slate-50/50 gap-4 shrink-0 acc-modal-mobile-taskbar">
             <div className="flex flex-col items-start w-full sm:w-auto">
-              <span className="text-[9px] font-black text-acc-text-light uppercase tracking-widest">Tổng hóa đơn</span>
+              <span className="text-[9px] font-black text-acc-text-main uppercase tracking-widest">Tổng hóa đơn</span>
               <span className="text-lg sm:text-2xl font-black text-acc-primary tracking-tighter">{totalAmount.toLocaleString()} VNĐ</span>
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -770,6 +1029,15 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
           </div>
         </div>
       </div>
+
+      <ConfirmModal 
+        isOpen={showErrorPopup} 
+        onClose={() => setShowErrorPopup(false)} 
+        onConfirm={() => setShowErrorPopup(false)} 
+        title="Khách hàng không tồn tại"
+        message="Tên khách hàng bạn vừa nhập không có trong hệ thống dữ liệu. Vui lòng chọn một khách hàng hợp lệ từ danh sách gợi ý để tiếp tục."
+        type="warning"
+      />
     </div>,
     document.body
   );
@@ -1063,7 +1331,7 @@ const InvoiceList = () => {
                       <p className="text-[10px] text-slate-400 font-bold" translate="no">{inv.displayOrderID}</p>
                     </td>
                     <td className="px-6 py-4" data-label="Khách hàng">
-                      <p className="text-sm font-black text-acc-text-main" translate="no">{inv.customerName}</p>
+                      <p className="text-sm font-black text-acc-text-main whitespace-nowrap truncate max-w-[150px] xl:max-w-none xl:whitespace-normal" title={inv.customerName} translate="no">{inv.customerName}</p>
                       <p className="text-[10px] text-slate-400 font-bold">{inv.date}</p>
                     </td>
                     <td className="px-6 py-4 text-sm font-black tabular-nums" data-label="Giá trị">

@@ -1,11 +1,23 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   DashboardIcon, InvoiceIcon, RevenueIcon, DebtIcon, 
   ChartIcon, SettingsIcon, LogoutIcon 
 } from '../Icons/AccountingIcons';
 
 const AccountingSidebar = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // 1. Xóa thông tin phiên đăng nhập
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+
+    // 2. Điều hướng về trang Login (Tuyến đường / trong App.jsx)
+    navigate('/');
+  };
+
   const menuItems = [
     { name: 'Dashboard', path: '/accounting', icon: DashboardIcon },
     { name: 'Hóa đơn Sales', path: '/accounting/sales-invoices', icon: InvoiceIcon },
@@ -13,6 +25,17 @@ const AccountingSidebar = ({ isOpen, onClose }) => {
     { name: 'Quản lý Công nợ', path: '/accounting/debts', icon: DebtIcon },
     { name: 'Báo cáo Tài chính', path: '/accounting/reports', icon: ChartIcon },
   ];
+
+  // Logic: Lấy thông tin người dùng từ Session/LocalStorage
+  const user = JSON.parse(localStorage.getItem('user')) || {
+    firstName: 'Huy',
+    lastName: 'Võ',
+    email: 'votruonghuy25@gmail.com',
+    roleName: 'Kế toán trưởng'
+  };
+
+  const fullName = `${user.lastName} ${user.firstName}`;
+  const initials = `${user.lastName?.charAt(0) || ''}${user.firstName?.charAt(0) || ''}`.toUpperCase();
 
   return (
     <>
@@ -41,21 +64,8 @@ const AccountingSidebar = ({ isOpen, onClose }) => {
                 <p className="text-blue-200/60 text-label-xs">Accounting Module</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <NavLink 
-                to="/home" 
-                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center text-white transition-all shadow-lg"
-                title="Quay lại Trang chủ"
-              >
-                <span className="material-symbols-outlined text-xl">home</span>
-              </NavLink>
-              {/* Close button for mobile & tablet */}
-              <button 
-                onClick={onClose}
-                className="xl:hidden w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
+            <div className="flex items-center">
+              {/* Close button removed as requested. Sidebar can be closed by clicking backdrop */}
             </div>
           </div>
         </div>
@@ -101,15 +111,18 @@ const AccountingSidebar = ({ isOpen, onClose }) => {
           <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 relative overflow-hidden group" style={{ padding: 'var(--space-lg)' }}>
             <div className="flex items-center gap-4" style={{ marginBottom: 'var(--space-lg)' }}>
               <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-xl flex items-center justify-center font-black text-xs text-white shadow-lg border border-white/20">
-                HV
+                {initials}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-black text-body-sm tracking-tight truncate">Huy Võ</p>
-                <p className="text-blue-200/50 text-label-xs truncate">Kế toán trưởng</p>
+                <p className="text-white font-black text-body-sm tracking-tight truncate">{fullName}</p>
+                <p className="text-blue-200/50 text-label-xs truncate">{user.roleName || 'Nhân viên'}</p>
               </div>
             </div>
             
-            <button className="w-full bg-white/10 hover:bg-white text-blue-100 hover:text-acc-primary py-3 rounded-2xl flex items-center justify-center gap-3 transition-all duration-500 group/btn border border-white/5 active:scale-95">
+            <button 
+              onClick={handleLogout}
+              className="w-full bg-white/10 hover:bg-white text-blue-100 hover:text-acc-primary py-3 rounded-2xl flex items-center justify-center gap-3 transition-all duration-500 group/btn border border-white/5 active:scale-95"
+            >
               <LogoutIcon className="text-lg rotate-180 group-hover/btn:translate-x-1 transition-transform" />
               <span className="text-label-xs font-black">Đăng xuất</span>
             </button>

@@ -71,12 +71,12 @@ const PaymentHistoryTable = ({ payments, loading, onPrint }) => {
                 </td>
                 <td className="px-8 py-5 text-center" data-label="Phương thức">
                   <span className={`acc-badge text-[10px] font-black border whitespace-nowrap px-3 py-1 rounded-full ${
-                    payment.paymentMethod === 'Tiền mặt' ? 'bg-green-50 text-green-600 border-green-100' :
-                    payment.paymentMethod === 'Chuyển khoản' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                    payment.paymentMethod === 'CASH' ? 'bg-green-50 text-green-600 border-green-100' :
+                    payment.paymentMethod === 'TRANSFER' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                     'bg-slate-50 text-slate-600 border-slate-100'
                   }`}>
-                    {payment.paymentMethod === 'Tiền mặt' ? 'TIỀN MẶT' : 
-                     payment.paymentMethod === 'Chuyển khoản' ? 'CHUYỂN KHOẢN' : 'THẺ / POS'}
+                    {payment.paymentMethod === 'CASH' ? 'TIỀN MẶT' : 
+                     payment.paymentMethod === 'TRANSFER' ? 'CHUYỂN KHOẢN' : 'THẺ / POS'}
                   </span>
                 </td>
                 <td className="px-8 py-5 text-center" data-label="Thao tác">

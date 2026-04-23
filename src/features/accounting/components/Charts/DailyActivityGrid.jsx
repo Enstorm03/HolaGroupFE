@@ -111,6 +111,10 @@ const DailyActivityGrid = ({ loading, apiData, dateFilter, onSelectDay, selected
                             <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Công nợ</span>
                             <span className="text-[12px] font-black text-rose-500">-{formatCurrency(hoveredDay.debt)}</span>
                         </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Số hóa đơn</span>
+                            <span className="text-[12px] font-black text-blue-500">{hoveredDay.invoiceCount || 0} hóa đơn</span>
+                        </div>
                         <div className="flex justify-between items-center pt-2.5 border-t border-slate-100">
                             <span className="text-[11px] text-acc-text-main font-black uppercase tracking-wider">Thực thu</span>
                             <span className="text-[11px] font-black text-acc-primary bg-acc-primary/10 px-3 py-1 rounded-lg">

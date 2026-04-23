@@ -22,6 +22,27 @@ const formatDisplayCode = (id, prefix = 'INV') => {
 };
 
 /**
+ * Parse YYYY-MM-DD or DD/MM/YYYY reliably
+ */
+const parseDate = (dStr) => {
+  if (!dStr) return null;
+  if (dStr instanceof Date) return { y: dStr.getFullYear(), m: dStr.getMonth() + 1, d: dStr.getDate() };
+  
+  const s = String(dStr).trim();
+  let parts = s.split(/[-/]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) { // YYYY-MM-DD
+      const [y, m, d] = parts.map(Number);
+      return { y, m, d: d || 1 };
+    } else if (parts[2].length === 4) { // DD-MM-YYYY
+      const [d, m, y] = parts.map(Number);
+      return { y, m, d };
+    }
+  }
+  return null;
+};
+
+/**
  * Chuẩn hóa trạng thái hóa đơn (VN <-> EN)
  */
 const safeNumber = (val) => {
@@ -73,7 +94,13 @@ const getRelativeTime = (dateStr) => {
  */
 const getCustomerDetails = (customerID) => {
   const customer = dbData.customers?.find(c => c.customerID === Number(customerID));
-  return customer || {
+  if (customer) {
+    return {
+      ...customer,
+      customerName: customer.companyName || `${customer.lastName} ${customer.firstName}`
+    };
+  }
+  return {
     customerName: isNaN(customerID) ? customerID : 'Khách hàng lẻ',
     email: null, phoneNumber: null, address: null
   };
@@ -215,9 +242,9 @@ const buildNotifications = () => {
   // ── 4. REPORT: Mỗi báo cáo quý → 1 card Report ──────────────────────────
   const reports = dbData.quarterly_reports || [];
   reports.forEach(rpt => {
-    const statusLabel = rpt.status === 'pending_approval'
+    const statusLabel = rpt.status === 'PENDING_APPROVAL'
       ? 'đã sẵn sàng phê duyệt'
-      : rpt.status === 'approved'
+      : rpt.status === 'APPROVED'
       ? 'đã được phê duyệt'
       : 'đang xử lý';
     notifications.push({
@@ -306,7 +333,7 @@ const buildExtendedDetail = (notifId) => {
         customer: customer.customerName,
         order_ref: orderCode,
         amount: Number(pay.amount).toLocaleString('vi-VN'),
-        method: pay.paymentMethod || 'Chuyển khoản',
+        method: pay.paymentMethod === 'TRANSFER' ? 'Chuyển khoản' : pay.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Thẻ / POS',
         ref_code: `${voucherCode} → ${invoiceCode}`,
         date: pay.paymentDate ? new Date(pay.paymentDate).toLocaleDateString('vi-VN') : 'N/A',
         approval: pay.recordedBy || 'Kế toán trưởng',
@@ -329,7 +356,7 @@ const buildExtendedDetail = (notifId) => {
         summary: [
           { label: 'Tổng doanh thu quý', value: rpt.totalRevenue.toLocaleString('vi-VN'), status: 'approved' },
           { label: 'Thuế GTGT đầu ra', value: rpt.vatOut.toLocaleString('vi-VN'), status: 'approved' },
-          { label: 'Thuế được khấu trừ', value: rpt.vatDeductible.toLocaleString('vi-VN'), status: rpt.status === 'approved' ? 'approved' : 'pending' },
+          { label: 'Thuế được khấu trừ', value: rpt.vatDeductible.toLocaleString('vi-VN'), status: rpt.status === 'APPROVED' ? 'approved' : 'pending' },
         ],
         breakdown: rpt.breakdown || [],
         timeline: rpt.timeline || [],
@@ -484,6 +511,7 @@ const mockPayments = () => {
       displayID: pay.voucherCode || formatDisplayCode(pay.paymentID, 'PAY'),
       displayInvoiceID: formatDisplayCode(pay.invoiceID, 'INV'),
       customerName,
+      paymentMethodLabel: pay.paymentMethod === 'TRANSFER' ? 'Chuyển khoản' : pay.paymentMethod === 'CASH' ? 'Tiền mặt' : pay.paymentMethod === 'CARD' ? 'Thẻ / POS' : (pay.paymentMethod || 'Khác'),
       date: pay.paymentDate ? new Date(pay.paymentDate).toLocaleDateString('vi-VN') : 'N/A',
     };
   });
@@ -556,24 +584,7 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
   const selectedYearsCount = options.filterYearsCount ? parseInt(options.filterYearsCount, 10) : 5;
   const filterWeekStr = options.filterWeek || `${now.getFullYear()}-W01`;
 
-  // Parse YYYY-MM-DD or DD/MM/YYYY reliably
-  const parseDate = (dStr) => {
-    if (!dStr) return null;
-    if (dStr instanceof Date) return { y: dStr.getFullYear(), m: dStr.getMonth() + 1, d: dStr.getDate() };
-    
-    const s = String(dStr).trim();
-    let parts = s.split(/[-/]/);
-    if (parts.length === 3) {
-      if (parts[0].length === 4) { // YYYY-MM-DD
-        const [y, m, d] = parts.map(Number);
-        return { y, m, d: d || 1 };
-      } else if (parts[2].length === 4) { // DD-MM-YYYY
-        const [d, m, y] = parts.map(Number);
-        return { y, m, d };
-      }
-    }
-    return null;
-  };
+  // Removed local parseDate definition to use hoisted version
 
   const toDate = (dStr) => {
     const pd = parseDate(dStr);
@@ -607,12 +618,12 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
     for (let m = 1; m <= 12; m++) {
       if (selectedYear === now.getFullYear() && m > now.getMonth() + 1) continue;
       
-      const revenue = invoices
-        .filter(i => {
-          const pd = parseDate(i.invoiceDate || i.createAt || i.createdAt);
-          return pd && pd.m === m && pd.y === selectedYear;
-        })
-        .reduce((sum, i) => sum + safeNumber(i.totalAmount), 0);
+      const matches = invoices.filter(i => {
+        const pd = parseDate(i.invoiceDate || i.createAt || i.createdAt);
+        return pd && pd.m === m && pd.y === selectedYear;
+      });
+      const revenue = matches.reduce((sum, i) => sum + safeNumber(i.totalAmount), 0);
+      const invoiceCount = matches.length;
         
       const collected = payments
         .filter(p => {
@@ -630,6 +641,7 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
         revenue, 
         collected, 
         expense: debt,
+        invoiceCount,
         prevRevenue: data.length > 0 ? data[data.length - 1].revenue : null,
         prevExpense: data.length > 0 ? data[data.length - 1].expense : null
       });
@@ -639,12 +651,12 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
     const startYear = endYear - selectedYearsCount + 1;
     
     for (let y = startYear; y <= endYear; y++) {
-      const revenue = invoices
-        .filter(i => {
-          const pd = parseDate(i.invoiceDate || i.createAt || i.createdAt);
-          return pd && pd.y === y;
-        })
-        .reduce((sum, i) => sum + safeNumber(i.totalAmount), 0);
+      const matches = invoices.filter(i => {
+        const pd = parseDate(i.invoiceDate || i.createAt || i.createdAt);
+        return pd && pd.y === y;
+      });
+      const revenue = matches.reduce((sum, i) => sum + safeNumber(i.totalAmount), 0);
+      const invoiceCount = matches.length;
         
       const collected = payments
         .filter(p => {
@@ -662,6 +674,7 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
         revenue, 
         collected, 
         expense: debt,
+        invoiceCount,
         prevRevenue: data.length > 0 ? data[data.length - 1].revenue : null,
         prevExpense: data.length > 0 ? data[data.length - 1].expense : null
       });
@@ -691,8 +704,9 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
         return pd && pd.d === d.getDate() && pd.m === d.getMonth() + 1 && pd.y === d.getFullYear();
       };
 
-      const revenue = invoices.filter(inv => matchesDate(inv.invoiceDate)).reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
-      const collected = payments.filter(p => matchesDate(p.paymentDate)).reduce((sum, p) => sum + safeNumber(p.amount), 0);
+      const matches = invoices.filter(inv => matchesDate(inv.invoiceDate || inv.createAt || inv.createdAt));
+      const revenue = matches.reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
+      const collected = payments.filter(p => matchesDate(p.paymentDate || p.createAt || p.createdAt)).reduce((sum, p) => sum + safeNumber(p.amount), 0);
       
       let endOfDay = new Date(d);
       endOfDay.setHours(23, 59, 59, 999);
@@ -704,6 +718,7 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
         revenue, 
         collected, 
         expense: debt,
+        invoiceCount: matches.length,
         prevRevenue: data.length > 0 ? data[data.length - 1].revenue : null,
         prevExpense: data.length > 0 ? data[data.length - 1].expense : null
       });
@@ -721,8 +736,9 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
         return pd && pd.d === day && pd.m === m && pd.y === y;
       };
 
-      const revenue = invoices.filter(inv => matchesDate(inv.invoiceDate)).reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
-      const collected = payments.filter(p => matchesDate(p.paymentDate)).reduce((sum, p) => sum + safeNumber(p.amount), 0);
+      const matches = invoices.filter(inv => matchesDate(inv.invoiceDate || inv.createAt || inv.createdAt));
+      const revenue = matches.reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
+      const collected = payments.filter(p => matchesDate(p.paymentDate || p.createAt || p.createdAt)).reduce((sum, p) => sum + safeNumber(p.amount), 0);
       
       let endOfDay = new Date(y, m - 1, day, 23, 59, 59);
       if (day === now.getDate() && m === (now.getMonth() + 1) && y === now.getFullYear()) endOfDay = now;
@@ -742,7 +758,8 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
         expense: debt, 
         debt,          
         actual,
-        intensity
+        intensity,
+        invoiceCount: matches.length
       });
     }
   }
@@ -763,17 +780,153 @@ const accountingService = {
     if (USE_MOCK) {
       const allInvoices = getAllCurrentInvoices();
       const allPayments = getAllCurrentPayments();
-      // Ensure we pass the options (filterYear, filterWeek, etc.)
+      // Chuyển đổi timeframe sang startDate/endDate chuẩn để giả lập API thật
       const data = computeChartData(timeframe, allInvoices, allPayments, options);
       return data;
     }
-    const response = await apiClient.get(`/api/reports/revenue?timeframe=${timeframe}`);
+    // Chuẩn hóa params theo b.md: ?startDate=...&endDate=...&groupBy=...
+    const params = {
+      startDate: options.startDate || '2024-01-01',
+      endDate: options.endDate || '2024-12-31',
+      groupBy: timeframe === 'monthly' ? 'month' : timeframe === 'daily' ? 'day' : 'year'
+    };
+    const response = await apiClient.get('/api/reports/revenue', { params });
     return response.data;
   },
 
   getInvoices: async () => {
     if (USE_MOCK) return mockInvoices();
     const response = await apiClient.get('/api/invoices');
+    return response.data;
+  },
+
+  getCategoryRevenueReport: async (timeframe = 'monthly', options = {}) => {
+    if (USE_MOCK) {
+      const allInvoices = getAllCurrentInvoices();
+      const categories = dbData.categories || [];
+      const products = dbData.products || [];
+
+      const filteredInvoices = allInvoices.filter(inv => {
+        const pd = parseDate(inv.invoiceDate || inv.createAt);
+        if (!pd) return false;
+        const now = new Date();
+        const selectedYear = options.filterYear || now.getFullYear();
+        if (timeframe === 'monthly') return pd.y === selectedYear;
+        if (timeframe === 'yearly') {
+          const count = options.filterYearsCount || 5;
+          return pd.y >= (selectedYear - count + 1) && pd.y <= selectedYear;
+        }
+        if (timeframe === 'weekly') {
+          const [y, w] = (options.filterWeek || "").split('-W').map(Number);
+          if (!y || !w) return pd.y === now.getFullYear();
+          const d = new Date(pd.y, pd.m - 1, pd.d);
+          const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+          const dayNum = target.getUTCDay() || 7;
+          target.setUTCDate(target.getUTCDate() + 4 - dayNum);
+          const yearStart = new Date(Date.UTC(target.getUTCFullYear(),0,1));
+          const weekNo = Math.ceil((((target - yearStart) / 86400000) + 1)/7);
+          return target.getUTCFullYear() === y && weekNo === w;
+        }
+        if (timeframe === 'daily') {
+          const [y, m] = (options.filterDate || "").split('-').map(Number);
+          return pd.y === y && pd.m === m;
+        }
+        return true;
+      });
+
+      const results = {};
+      categories.forEach(cat => {
+        results[cat.categoryName] = 0;
+      });
+
+      filteredInvoices.forEach(inv => {
+        (inv.items || []).forEach(item => {
+          const product = products.find(p => p.productID === item.productID);
+          if (product) {
+            const category = categories.find(c => c.categoryID === product.categoryID);
+            if (category) {
+              results[category.categoryName] += safeNumber(item.unitPrice || item.price) * (item.quantity || 1);
+            }
+          }
+        });
+      });
+
+      return Object.entries(results).map(([name, value]) => ({ name, value }));
+    }
+    const response = await apiClient.get('/api/reports/categories', { params: { timeframe, ...options } });
+    return response.data;
+  },
+
+  getSalesPerformanceReport: async (timeframe = 'monthly', options = {}) => {
+    if (USE_MOCK) {
+      const allInvoices = getAllCurrentInvoices();
+      const orders = dbData.orders || [];
+      const salesUsers = (dbData.users || []).filter(u => u.roleID === 2);
+
+      const filteredInvoices = allInvoices.filter(inv => {
+        const pd = parseDate(inv.invoiceDate || inv.createAt);
+        if (!pd) return false;
+
+        const now = new Date();
+        const selectedYear = options.filterYear || now.getFullYear();
+
+        if (timeframe === 'monthly') {
+          return pd.y === selectedYear;
+        } else if (timeframe === 'yearly') {
+          const count = options.filterYearsCount || 5;
+          return pd.y >= (selectedYear - count + 1) && pd.y <= selectedYear;
+        } else if (timeframe === 'weekly') {
+          const [y, w] = (options.filterWeek || "").split('-W').map(Number);
+          if (!y || !w) return pd.y === now.getFullYear();
+          
+          const d = new Date(pd.y, pd.m - 1, pd.d);
+          const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+          const dayNum = target.getUTCDay() || 7;
+          target.setUTCDate(target.getUTCDate() + 4 - dayNum);
+          const yearStart = new Date(Date.UTC(target.getUTCFullYear(),0,1));
+          const weekNo = Math.ceil((((target - yearStart) / 86400000) + 1)/7);
+          return target.getUTCFullYear() === y && weekNo === w;
+        } else if (timeframe === 'daily') {
+          const [y, m] = (options.filterDate || "").split('-').map(Number);
+          return pd.y === y && pd.m === m;
+        }
+        return true;
+      });
+
+      return salesUsers.map(user => {
+        // Sử dụng cấu trúc SQL-aligned: firstName, lastName
+        const fullName = `${user.lastName} ${user.firstName}`;
+        const userOrders = orders.filter(o => o.userID === user.userID);
+        const userOrderIds = new Set(userOrders.map(o => o.orderID));
+        
+        // Cải tiến: Kiểm tra cả ID đơn hàng lẫn ID nhân viên trực tiếp trên hóa đơn
+        const userInvoices = filteredInvoices.filter(inv => 
+          userOrderIds.has(inv.orderID) || Number(inv.userID) === user.userID
+        );
+        
+        const revenue = userInvoices.reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
+        const orderCount = userInvoices.length;
+        
+        let target = 500000000;
+        if (timeframe === 'yearly') target = 5000000000;
+        if (timeframe === 'weekly') target = 120000000;
+        if (timeframe === 'daily') target = 250000000;
+
+        const achievement = (revenue / target) * 100;
+        const commissionRate = achievement > 100 ? 0.05 : 0.03;
+
+        return {
+          id: user.userID,
+          name: fullName,
+          revenue,
+          orderCount,
+          target,
+          achievement,
+          commission: revenue * commissionRate
+        };
+      });
+    }
+    const response = await apiClient.get('/api/reports/sales-performance', { params: { timeframe, ...options } });
     return response.data;
   },
 
@@ -924,6 +1077,18 @@ const accountingService = {
       return { success: true, count: invoiceIDs.length };
     }
     const response = await apiClient.post('/api/reminders/batch-send', { invoiceIDs });
+    return response.data;
+  },
+
+  getProducts: async () => {
+    if (USE_MOCK) return dbData.products || [];
+    const response = await apiClient.get('/api/products');
+    return response.data;
+  },
+
+  getCategories: async () => {
+    if (USE_MOCK) return dbData.categories || [];
+    const response = await apiClient.get('/api/categories');
     return response.data;
   },
 

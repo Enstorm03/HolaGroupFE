@@ -89,7 +89,8 @@
   letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: clip; /* We want to show as much as possible, or scale down */
+  text-overflow: clip;
+  /* We want to show as much as possible, or scale down */
   display: block;
   width: 100%;
 }
@@ -190,8 +191,38 @@
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .animate-fade-up {
   animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-zoom-in {
+  animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes bounce-subtle {
@@ -272,36 +303,42 @@
 
 /* scaling for Large Desktop screens to prevent vertical overflow (1441px - 1610px) */
 @media (min-width: 1441px) and (max-width: 1610px) {
+
   #accounting-dashboard-content,
   .accounting-debt-container {
-     zoom: 0.92;
+    zoom: 0.92;
   }
 }
 
 
 /* Auto-scaling for Small Desktop / Laptop screens (Prevent Table & Card Breakage) */
 @media (min-width: 1025px) and (max-width: 1440px) {
-  .acc-responsive-table, 
+
+  .acc-responsive-table,
   .acc-summary-grid {
-    zoom: 0.85; /* Proportional scaling for the whole block */
+    zoom: 0.85;
+    /* Proportional scaling for the whole block */
   }
 
   .acc-summary-value {
-    font-size: clamp(0.9rem, 1.8vw, 1.5rem) !important; /* Back to same floor as Debt */
+    font-size: clamp(0.9rem, 1.8vw, 1.5rem) !important;
+    /* Back to same floor as Debt */
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    max-width: calc(100% - 50px) !important; 
+    max-width: calc(100% - 50px) !important;
   }
 
   .acc-card.group {
-    padding: 1rem !important; /* Slightly more breathable than 0.75rem */
+    padding: 1rem !important;
+    /* Slightly more breathable than 0.75rem */
   }
 
   .acc-summary-grid .acc-card h2 {
-    font-size: 1.1rem !important; /* Larger than 0.85rem, closer to Debt style */
+    font-size: 1.1rem !important;
+    /* Larger than 0.85rem, closer to Debt style */
   }
-  
+
   .acc-responsive-table th,
   .acc-responsive-table td {
     padding-left: 0.5rem !important;
@@ -314,7 +351,8 @@
   .acc-responsive-table td[data-label="Mã hóa đơn"] span {
     white-space: nowrap !important;
     display: inline-flex !important;
-    min-width: max-content !important; /* Better cross-browser support than fit-content */
+    min-width: max-content !important;
+    /* Better cross-browser support than fit-content */
     letter-spacing: -0.02em;
   }
 }
@@ -322,7 +360,8 @@
 /* iPad & Tablet Optimization (641px - 1024px) */
 @media (min-width: 641px) and (max-width: 1024px) {
   .acc-responsive-table {
-    zoom: 0.8; /* More aggressive shrink for tablet */
+    zoom: 0.8;
+    /* More aggressive shrink for tablet */
   }
 
   .acc-responsive-table th,
@@ -341,9 +380,11 @@
   .acc-responsive-table td[data-label="Khách hàng"],
   .acc-responsive-table td[data-label="Khách hàng / Mã hóa đơn"],
   .acc-responsive-table td[data-label="Đối tác"] {
-    min-width: 130px !important; /* Slightly smaller min-width */
+    min-width: 130px !important;
+    /* Slightly smaller min-width */
     white-space: normal !important;
-    font-size: 0.75rem !important; /* Allow name to be slightly larger but shrinkable */
+    font-size: 0.75rem !important;
+    /* Allow name to be slightly larger but shrinkable */
   }
 
   .acc-responsive-table td[data-label="Trạng thái"],
@@ -363,7 +404,8 @@
   }
 
   .acc-responsive-table td[data-label="Chứng từ"] {
-    min-width: 90px !important; /* Guaranteed space for INV-XXX */
+    min-width: 90px !important;
+    /* Guaranteed space for INV-XXX */
   }
 
   .acc-responsive-table td[data-label="Lần nhắc cuối"] {
@@ -389,6 +431,7 @@
 
 /* Card view only for very narrow screens (Portrait mobile) */
 @media (max-width: 640px) {
+
   /* Smart Card Layout for Mobile */
   .acc-responsive-table {
     background: transparent !important;
@@ -433,7 +476,7 @@
     transform: none !important;
     border-color: transparent !important;
   }
-  
+
   .acc-selected-row td:first-child {
     border-left: none !important;
   }
@@ -514,7 +557,8 @@
     align-items: center !important;
     gap: 8px;
     flex-wrap: nowrap;
-    border-bottom: 1px dashed #f1f5f9 !important; /* Line 1 separator */
+    border-bottom: 1px dashed #f1f5f9 !important;
+    /* Line 1 separator */
     background: #ffffff;
   }
 
@@ -529,10 +573,11 @@
   }
 
   .acc-responsive-table tbody td[data-label="Quá hạn"]::before {
-    display: none !important; /* Hide label in Row 1 to save space */
+    display: none !important;
+    /* Hide label in Row 1 to save space */
   }
 
-  .acc-responsive-table tbody td[data-label="Quá hạn"] > div {
+  .acc-responsive-table tbody td[data-label="Quá hạn"]>div {
     flex-direction: row !important;
     gap: 8px !important;
     align-items: center !important;
@@ -549,7 +594,7 @@
     content: "Mã hóa đơn:";
     font-size: 11px !important;
     font-weight: 700;
-    color: #64748b;
+    color: #2b3437;
     text-transform: none !important;
     letter-spacing: 0 !important;
     white-space: nowrap;
@@ -561,7 +606,7 @@
     content: "Mã phiếu thu:";
     font-size: 11px !important;
     font-weight: 700;
-    color: #64748b;
+    color: #2b3437;
     text-transform: none !important;
     letter-spacing: 0 !important;
     white-space: nowrap;
@@ -573,7 +618,7 @@
     content: "Chứng từ:";
     font-size: 11px !important;
     font-weight: 700;
-    color: #64748b;
+    color: #2b3437;
     text-transform: none !important;
     letter-spacing: 0 !important;
     white-space: nowrap;
@@ -616,7 +661,8 @@
 
   .acc-responsive-table tbody td[data-label="Trạng thái"],
   .acc-responsive-table tbody td[data-label="Phương thức"] {
-    order: 1 !important; /* Back to top row */
+    order: 1 !important;
+    /* Back to top row */
     position: absolute !important;
     top: 1.25rem;
     right: 1.75rem;
@@ -633,17 +679,38 @@
 
   .acc-responsive-table tbody td[data-label="Trạng thái"]::before,
   .acc-responsive-table tbody td[data-label="Phương thức"]::before {
-    display: none !important; /* Hide labels for absolute positioning to save space */
+    display: none !important;
+    /* Hide labels for absolute positioning to save space */
   }
 
-  .acc-responsive-table tbody td[data-label="Trạng thái"]::before { content: "TRẠNG THÁI:"; }
-  .acc-responsive-table tbody td[data-label="Phương thức"]::before { content: "PHƯƠNG THỨC:"; }
+  .acc-responsive-table tbody td[data-label="Trạng thái"]::before {
+    content: "TRẠNG THÁI:";
+  }
+
+  .acc-responsive-table tbody td[data-label="Phương thức"]::before {
+    content: "PHƯƠNG THỨC:";
+  }
+
   .acc-responsive-table tbody td[data-label="Mô tả"]::before,
-  .acc-responsive-table tbody td[data-label="Tên sản phẩm"]::before { content: "SẢN PHẨM / DỊCH VỤ:"; }
-  .acc-responsive-table tbody td[data-label="Số lượng"]::before { content: "SỐ LƯỢNG:"; }
-  .acc-responsive-table tbody td[data-label="Đơn giá"]::before { content: "ĐƠN GIÁ:"; }
-  .acc-responsive-table tbody td[data-label="Thành tiền"]::before { content: "THÀNH TIỀN:"; }
-  .acc-responsive-table tbody td[data-label="Xóa"]::before { content: "THAO TÁC:"; }
+  .acc-responsive-table tbody td[data-label="Tên sản phẩm"]::before {
+    content: "SẢN PHẨM / DỊCH VỤ:";
+  }
+
+  .acc-responsive-table tbody td[data-label="Số lượng"]::before {
+    content: "SỐ LƯỢNG:";
+  }
+
+  .acc-responsive-table tbody td[data-label="Đơn giá"]::before {
+    content: "ĐƠN GIÁ:";
+  }
+
+  .acc-responsive-table tbody td[data-label="Thành tiền"]::before {
+    content: "THÀNH TIỀN:";
+  }
+
+  .acc-responsive-table tbody td[data-label="Xóa"]::before {
+    content: "THAO TÁC:";
+  }
 
   /* Hide redundant date/time rows as they are now inside customer rows */
   .acc-responsive-table tbody td[data-label="Ngày thu"],
@@ -656,12 +723,14 @@
   .acc-responsive-table tbody td[data-label="Khách hàng / Mã hóa đơn"],
   .acc-responsive-table tbody td[data-label="Đối tác"] {
     order: 2;
-    padding: 1.25rem 1.5rem !important; /* Slightly reduced horizontal padding from 1.75rem */
+    padding: 1.25rem 1.5rem !important;
+    /* Slightly reduced horizontal padding from 1.75rem */
     display: flex !important;
     flex-direction: column !important;
     gap: 8px;
     background: #ffffff;
-    border-bottom: 1px dashed #f1f5f9 !important; /* New line separator before Price footer */
+    border-bottom: 1px dashed #f1f5f9 !important;
+    /* New line separator before Price footer */
   }
 
   .acc-responsive-table tbody td[data-label="Đối tác"]::before {
@@ -669,7 +738,7 @@
     content: "ĐỐI TÁC";
     font-size: 9px;
     font-weight: 900;
-    color: #94a3b8;
+    color: #2b3437;
     letter-spacing: 0.05em;
     margin-bottom: 4px;
   }
@@ -683,13 +752,13 @@
   .acc-responsive-table tbody td[data-label="Đối tác"] .text-body-base {
     font-size: 1.1rem !important;
     font-weight: 900 !important;
-    color: #0f172a !important;
+    color: #2b3437 !important;
     display: block !important;
   }
 
   .acc-responsive-table tbody td[data-label="Đối tác"] .text-\[10px\] {
     font-size: 11px !important;
-    color: #64748b !important;
+    color: #2b3437 !important;
   }
 
   /* Row 3: Information & Reminders Group (Horizontal Row) */
@@ -703,7 +772,8 @@
     background: #ffffff;
     border: none !important;
     width: 75% !important;
-    min-height: 0 !important; /* Safe flex reset for Firefox */
+    min-height: 0 !important;
+    /* Safe flex reset for Firefox */
     border-top: 1px dashed #f1f5f9 !important;
     border-bottom: 1px dashed #f1f5f9 !important;
   }
@@ -713,7 +783,7 @@
     display: block !important;
     font-size: 10px;
     font-weight: 800;
-    color: #94a3b8;
+    color: #2b3437;
     margin-right: 8px;
     margin-bottom: 0 !important;
     letter-spacing: 0;
@@ -738,7 +808,7 @@
     content: "AUTO" !important;
     font-size: 8px;
     font-weight: 900;
-    color: #94a3b8;
+    color: #2b3437;
     margin-bottom: 0 !important;
   }
 
@@ -746,15 +816,16 @@
   .acc-responsive-table tbody td[data-label="SỐ TIỀN CÒN NỢ"],
   .acc-responsive-table tbody td[data-label="Giá trị"],
   .acc-responsive-table tbody td[data-label="Số tiền"] {
-    order: 5;
+    order: 5 !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
-    padding: 1rem 1.75rem !important;
-    background: transparent;
-    border-top: none !important; /* Already handled by Row 3's border-bottom */
+    padding: 1.25rem 0 1.25rem 1.75rem !important;
+    background: #f8fafc;
+    border-top: 1px dashed #f1f5f9 !important;
     margin-top: 0;
-    width: 100%;
+    width: 60% !important;
+    border-radius: 0 0 0 2rem;
   }
 
   .acc-responsive-table tbody td[data-label="SỐ TIỀN CÒN NỢ"]::before,
@@ -764,7 +835,7 @@
     content: attr(data-label);
     font-size: 10px;
     font-weight: 800;
-    color: #94a3b8;
+    color: #2b3437;
     text-transform: uppercase;
     letter-spacing: -0.05em;
     margin-bottom: 2px;
@@ -815,7 +886,8 @@
   /* Row 4: Pricing & Action Footer */
   .acc-responsive-table tbody td[data-label="SỐ TIỀN CÒN NỢ"] {
     order: 4 !important;
-    width: 60% !important; /* Take most of the space */
+    width: 60% !important;
+    /* Take most of the space */
     padding: 1rem 0 1rem 1.75rem !important;
     background: #f8fafc;
     display: flex !important;
@@ -826,14 +898,16 @@
   }
 
   .acc-responsive-table tbody td[data-label="Thao tác"] {
-    order: 4 !important;
-    width: 40% !important; /* Take the rest */
+    order: 5 !important;
+    width: 40% !important;
+    /* Take the rest */
     padding: 1rem 1.75rem 1rem 0 !important;
     background: #f8fafc;
     display: flex !important;
     justify-content: flex-end !important;
     align-items: center !important;
     border-radius: 0 0 2rem 0;
+    border-top: 1px dashed #f1f5f9 !important;
   }
 
   .acc-responsive-table tbody td[data-label="SỐ TIỀN CÒN NỢ"]::before {
@@ -860,12 +934,12 @@
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     background: #ffffff;
-    border: 1px solid #f1f5f9 !important;
+    border: 2px solid #e2e8f0 !important;
     border-radius: 1.75rem !important;
     margin-bottom: 1.5rem !important;
     padding: 0 !important;
     overflow: hidden !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03) !important;
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
   }
 
   .acc-table-detail tbody td {
@@ -875,21 +949,46 @@
   }
 
   /* Product Name Header (Full Width) */
-  .acc-table-detail tbody td[data-label="Mô tả"] {
+  .acc-table-detail tbody td[data-label="Mô tả"],
+  .acc-table-detail tbody td[data-label="Danh mục"] {
     grid-column: span 2;
-    padding-bottom: 0.75rem !important;
-    border-bottom: 1px solid #f8fafc !important;
-    background: linear-gradient(to bottom, #ffffff, #fafafa);
+    padding: 0.75rem 1.25rem !important;
   }
 
-  .acc-table-detail tbody td[data-label="Mô tả"]::before {
+  .acc-table-detail tbody td[data-label="Sản phẩm"] {
+    grid-column: span 1;
+    padding: 0.75rem 1.25rem !important;
+  }
+
+  .acc-table-detail tbody td[data-label="Danh mục"] {
+    padding-top: 1.25rem !important;
+    order: 1 !important;
+  }
+
+  .acc-table-detail tbody td[data-label="Sản phẩm"] {
+    border-bottom: 1px dashed #f1f5f9 !important;
+    border-right: 1px solid #f1f5f9 !important;
+    padding-bottom: 1.25rem !important;
+    order: 2 !important;
+  }
+
+  .acc-table-detail tbody td[data-label="Danh mục"]::before {
     display: block !important;
-    content: "# THIẾT KẾ & DỊCH VỤ";
-    font-size: 8px;
+    content: "DANH MỤC";
+    font-size: 10px;
     font-weight: 900;
-    color: var(--acc-primary);
+    color: #2b3437;
     letter-spacing: 0.1em;
-    margin-bottom: 6px;
+  }
+
+  .acc-table-detail tbody td[data-label="Sản phẩm"]::before {
+    display: block !important;
+    content: "SẢN PHẨM";
+    font-size: 10px;
+    font-weight: 900;
+    color: #2b3437;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
   }
 
   /* Specific Card Labels for Payment History Table */
@@ -908,7 +1007,7 @@
     content: "Nhắc nợ: ";
     font-size: 10px;
     font-weight: 800;
-    color: #94a3b8;
+    color: #2b3437;
     text-transform: uppercase;
   }
 
@@ -926,7 +1025,7 @@
   .acc-responsive-table td[data-label="Lần nhắc cuối"] span.text-body-sm {
     font-size: 12px !important;
     font-weight: 800 !important;
-    color: #475569 !important;
+    color: #2b3437 !important;
   }
 
   .acc-responsive-table td[data-label="Lần nhắc cuối"] span.text-\[10px\] {
@@ -934,7 +1033,7 @@
     padding: 2px 8px !important;
     background: #f1f5f9 !important;
     border-radius: 4px !important;
-    color: #64748b !important;
+    color: #2b3437 !important;
   }
 
   /* Tab Container Mobile - Make it scrollable instead of squished */
@@ -960,13 +1059,14 @@
   .acc-table-detail tbody td[data-label="Mô tả"] {
     font-size: 1rem !important;
     font-weight: 900 !important;
-    color: #1e293b;
+    color: #2b3437;
     line-height: 1.4 !important;
   }
 
   /* Stats Duo (Shared Row) */
   .acc-table-detail tbody td[data-label="Số lượng"],
-  .acc-table-detail tbody td[data-label="Đơn giá"] {
+  .acc-table-detail tbody td[data-label="Đơn giá"],
+  .acc-table-detail tbody td[data-label="Thao tác"] {
     grid-column: span 1;
     background: #fdfdfd;
     display: flex !important;
@@ -977,15 +1077,18 @@
 
   .acc-table-detail tbody td[data-label="Số lượng"] {
     border-right: 1px solid #f1f5f9 !important;
+    border-bottom: 1px dashed #f1f5f9 !important;
+    order: 2 !important;
+    grid-column: span 1;
   }
 
   .acc-table-detail tbody td[data-label="Số lượng"]::before,
   .acc-table-detail tbody td[data-label="Đơn giá"]::before {
     display: block !important;
     content: attr(data-label);
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 800;
-    color: #94a3b8;
+    color: #2b3437;
     text-transform: uppercase;
   }
 
@@ -993,12 +1096,13 @@
   .acc-table-detail tbody td[data-label="Đơn giá"] {
     font-size: 12px !important;
     font-weight: 800 !important;
-    color: #334155;
+    color: #2b3437;
   }
 
   /* Total Highlight (Full Width) */
   .acc-table-detail tbody td[data-label="Thành tiền"] {
     grid-column: span 2;
+    order: 5 !important;
     background: rgba(79, 70, 229, 0.04);
     display: flex !important;
     justify-content: space-between !important;
@@ -1010,17 +1114,40 @@
   .acc-table-detail tbody td[data-label="Thành tiền"]::before {
     display: block !important;
     content: "TỔNG GIÁ TRỊ";
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 900;
     color: var(--acc-primary);
     letter-spacing: 0.05em;
   }
 
   .acc-table-detail tbody td[data-label="Thành tiền"] {
-    font-size: 1.25rem !important;
-    font-weight: 1000 !important;
+    font-size: 1.1rem !important;
+    font-weight: 900 !important;
     color: var(--acc-primary);
     letter-spacing: -0.04em;
+  }
+
+  /* Delete button repositioning for Mobile - Same row as Quantity */
+  .acc-table-detail tbody td[data-label="Thao tác"] {
+    order: 4 !important;
+    justify-content: center !important;
+    align-items: center !important;
+    border-top: none !important;
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    padding: 1rem 1.25rem !important;
+    background: #fdfdfd !important;
+  }
+
+  .acc-table-detail tbody td[data-label="Thao tác"]::before {
+    display: block !important;
+    content: "THAO TÁC";
+    font-size: 10px;
+    font-weight: 800;
+    color: #2b3437;
+    text-transform: uppercase;
   }
 
   /* High-fidelity Selection State for Mobile Cards */
@@ -1231,14 +1358,17 @@
     font-size: 8px !important;
   }
 
-  /* CHO PHÉP TÊN KHÁCH HÀNG XUỐNG DÒNG TRÊN IPAD ĐỂ TRÁNH TRÀN NGANG */
+  /* ĐẢM BẢO TÊN KHÁCH HÀNG KHÔNG XUỐNG DÒNG TRÊN IPAD */
   .acc-responsive-table td[data-label="Khách hàng"] p,
   .acc-responsive-table td[data-label="Đối tác"] div>div>span:first-child,
   .acc-responsive-table td[data-label="Khách hàng / Hóa đơn"] span {
-    white-space: normal !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
     font-size: 11px !important;
     line-height: 1.2 !important;
-    max-width: 120px;
+    max-width: 180px !important;
+    display: block !important;
   }
 
   /* ĐẢM BẢO CỘT TIỀN KHÔNG XUỐNG DÒNG, CHỨA ĐƯỢC 15 SỐ */
@@ -1291,10 +1421,12 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .flex-nowrap {
   flex-wrap: nowrap !important;
 }
