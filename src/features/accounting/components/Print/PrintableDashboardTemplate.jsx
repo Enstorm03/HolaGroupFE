@@ -4,7 +4,7 @@ import React from 'react';
  * Mẫu in Dashboard kế toán chuyên nghiệp
  * Được thiết kế để xuất PDF với cấu trúc phân tầng: Header, Stats, Tables, Footer
  */
-const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe }) => {
+const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe, dynamicLabel }) => {
   if (!stats) return null;
 
   const formatDisplayValue = (val) => {
@@ -37,8 +37,24 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe }) => {
         </div>
         <div style={{ textAlign: 'right' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '700' }}>BÁO CÁO TÓM TẮT TÀI CHÍNH</h2>
-          <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>Kỳ báo cáo: {timeframeLabels[timeframe]} | Ngày xuất: {new Date().toLocaleDateString('vi-VN')}</p>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>Kỳ báo cáo: {timeframeLabels[timeframe]} | Ngày xuất: {new Date().toLocaleDateString('vi-VN')} | Thời gian: {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
         </div>
+      </div>
+
+      {/* DÒNG PHÂN TÍCH DỮ LIỆU */}
+      <div style={{ marginBottom: '1.25rem' }}>
+        <h3 style={{ 
+          margin: 0, 
+          fontSize: '0.875rem', 
+          fontWeight: '800', 
+          color: '#0f172a', 
+          borderLeft: '0.25rem solid #00288E', 
+          paddingLeft: '0.625rem',
+          textTransform: 'uppercase',
+          letterSpacing: '0.03125rem'
+        }}>
+          Phân tích dữ liệu: <span style={{ color: '#00288E' }}>{dynamicLabel}</span>
+        </h3>
       </div>
 
       {/* TÓM TẮT CHỈ SỐ (STATS) */}
@@ -64,7 +80,7 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe }) => {
         ))}
       </div>
 
-      {/* BẢNG GIAO DỊCH GẦN ĐÂY (Nội dung thực thụ) */}
+      {/* BẢNG GIAO DỊCH GẦN ĐÂY */}
       <div style={{ marginBottom: '1.875rem' }}>
         <h3 style={{ fontSize: '0.875rem', fontWeight: '800', color: '#0f172a', marginBottom: '0.9375rem', borderLeft: '0.25rem solid #00288E', paddingLeft: '0.625rem' }}>
           CHI TIẾT GIAO DỊCH VÀ THÔNG BÁO MỚI NHẤT
@@ -102,18 +118,11 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe }) => {
                 </td>
               </tr>
             ))}
-            {(!stats.notifications || stats.notifications.length === 0) && (
-              <tr>
-                <td colSpan="5" style={{ border: '0.0625rem solid #e2e8f0', padding: '1.875rem', textAlign: 'center', color: '#94a3b8' }}>
-                  Không có dữ liệu giao dịch trong kỳ báo cáo này.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
 
-      {/* CHỮ KÝ & XÁC NHẬN */}
+      {/* CHỮ KÝ */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '3.125rem', gap: '6.25rem', textAlign: 'center' }}>
         <div style={{ minWidth: '9.375rem' }}>
           <p style={{ margin: 0, fontWeight: '700', fontSize: '0.75rem' }}>Người lập biểu</p>

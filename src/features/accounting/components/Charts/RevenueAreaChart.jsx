@@ -6,35 +6,67 @@ import {
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
+    
+    const renderTrend = (current, prev) => {
+      if (prev === undefined || prev === null || prev === 0) return null;
+      const diff = ((current - prev) / prev) * 100;
+      const isUp = diff >= 0;
+      if (Math.abs(diff) < 0.1) return null;
+      
+      return (
+        <div className={`flex items-center gap-0.5 font-black text-[9px] px-1.5 py-0.5 rounded-md ${isUp ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+          <span className="material-symbols-outlined text-[12px] font-black">
+            {isUp ? 'trending_up' : 'trending_down'}
+          </span>
+          {Math.abs(diff).toFixed(1)}%
+        </div>
+      );
+    };
+
     return (
-      <div className="bg-white rounded-3xl shadow-float border border-slate-100 animate-fade-in" style={{ padding: 'var(--space-lg)', minWidth: '14rem' }}>
-        <p className="text-label-xs text-acc-text-light border-b border-slate-50" style={{ marginBottom: 'var(--space-sm)', paddingBottom: 'var(--space-xs)' }}>
-          {label}
+      <div className="bg-white/95 backdrop-blur-md rounded-[1.5rem] shadow-2xl border border-slate-100 p-4 min-w-[15rem] animate-in fade-in zoom-in duration-200">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-3 pb-2 flex justify-between items-center">
+          <span>{label}</span>
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-          <div className="flex items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-acc-primary shadow-sm"></div>
-              <span className="text-body-sm font-bold text-acc-text-muted">Doanh thu:</span>
+        
+        <div className="space-y-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-acc-primary"></div>
+                <span className="text-[11px] font-bold text-slate-500">Doanh thu</span>
+              </div>
+              {renderTrend(data.revenue, data.prevRevenue)}
             </div>
-            <span className="text-body-sm font-black text-acc-text-main">
-              {Number(data.revenue || 0).toLocaleString()}₫
+            <span className="text-sm font-black text-acc-text-main pl-3">
+              {(data.revenue || 0).toLocaleString()} <small className="text-[10px] opacity-50">VNĐ</small>
             </span>
           </div>
-          <div className="flex items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm"></div>
-              <span className="text-body-sm font-bold text-acc-text-muted">Công nợ:</span>
+
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                <span className="text-[11px] font-bold text-slate-500">Công nợ</span>
+              </div>
+              {renderTrend(data.expense, data.prevExpense)}
             </div>
-            <span className="text-body-sm font-black text-amber-600">
-              {Number(data.debt || 0).toLocaleString()}₫
+            <span className="text-sm font-black text-amber-600 pl-3">
+              {(data.expense || 0).toLocaleString()} <small className="text-[10px] opacity-50">VNĐ</small>
             </span>
           </div>
-          <div className="border-t border-slate-50 flex items-center justify-between bg-blue-50/30 rounded-2xl" style={{ marginTop: 'var(--space-sm)', padding: 'var(--space-sm) var(--space-md)', marginHorizontal: 'calc(var(--space-lg) * -1)' }}>
-            <span className="text-label-xs text-acc-primary font-black">Thực thu:</span>
-            <span className="text-body-sm font-black text-acc-primary">
-              {(Number(data.revenue || 0) - Number(data.debt || 0)).toLocaleString()}₫
-            </span>
+
+          <div className="pt-2 mt-2 border-t border-slate-50 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-slate-400 uppercase">Hóa đơn:</span>
+              <span className="text-[11px] font-black text-slate-700">{data.invoiceCount || 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-acc-primary uppercase">Thực thu:</span>
+              <span className="text-sm font-black text-acc-primary">
+                {(data.collected || 0).toLocaleString()} <small className="text-[10px] opacity-50">VNĐ</small>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -43,7 +75,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-const RevenueAreaChart = ({ data, loading }) => {
+const RevenueAreaChart = ({ data, loading, timeframe }) => {
   const containerRef = React.useRef(null);
   const [width, setWidth] = React.useState(0);
 
@@ -101,27 +133,32 @@ const RevenueAreaChart = ({ data, loading }) => {
               dy={15}
               interval={0}
             />
-            <YAxis hide width={0} domain={['auto', 'auto']} />
+            <YAxis 
+              hide 
+              domain={[0, (dataMax) => dataMax * 1.1]} 
+            />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#E2E8F0', strokeWidth: 1 }} />
             <Area 
-              type="monotone" 
+              type="linear" 
               dataKey="revenue" 
               stroke="#00288E" 
-              strokeWidth={4} 
+              strokeWidth={3} 
               fillOpacity={1} 
               fill="url(#colorRev)" 
-              animationDuration={1500}
+              animationDuration={1000}
+              dot={{ r: 4, fill: '#fff', stroke: '#00288E', strokeWidth: 2 }}
               activeDot={{ r: 6, strokeWidth: 0, fill: '#00288E' }}
             />
             <Area 
-              type="monotone" 
-              dataKey="debt" 
+              type="linear" 
+              dataKey="expense" 
               stroke="#f59e0b" 
               strokeWidth={2} 
-              strokeDasharray="5 5"
+              strokeDasharray="4 4"
               fillOpacity={1} 
               fill="url(#colorDebt)" 
-              animationDuration={2000}
+              animationDuration={1200}
+              dot={{ r: 3, fill: '#fff', stroke: '#f59e0b', strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>

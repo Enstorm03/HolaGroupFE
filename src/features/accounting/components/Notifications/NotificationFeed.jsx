@@ -1,6 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WarningIcon, SuccessIcon, NotificationIcon } from '../Icons/AccountingIcons';
+import accountingService from '../../services/accountingService';
+
+const RelativeTime = ({ notif }) => {
+  const [display, setDisplay] = useState('...');
+
+  useEffect(() => {
+    // Lấy mốc thời gian gốc (cố định)
+    const ts = notif.timestamp || notif.time || notif.paymentDate || notif.createdAt || notif.createAt;
+    
+    if (!ts) {
+      setDisplay('Vừa xong');
+      return;
+    }
+
+    const date = new Date(ts);
+    if (isNaN(date.getTime())) {
+      setDisplay('Vừa xong');
+      return;
+    }
+
+    const calculate = () => {
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 30) return date.toLocaleDateString('vi-VN');
+      if (diffDays > 0) return diffDays === 1 ? 'Hôm qua' : `${diffDays} ngày trước`;
+      if (diffHours > 0) return `${diffHours} giờ trước`;
+      if (diffMins > 0) return `${diffMins} phút trước`;
+      return 'Vừa xong';
+    };
+
+    const updateDisplay = () => {
+      setDisplay(calculate());
+    };
+
+    updateDisplay();
+    // Cập nhật nhanh hơn (10 giây một lần) để người dùng thấy sự thay đổi ngay khi sang phút mới
+    const interval = setInterval(updateDisplay, 10000);
+    return () => clearInterval(interval);
+  }, [notif]);
+
+  return <span className="uppercase">{display}</span>;
+};
 
 const NotificationFeed = ({ notifications, loading }) => {
   const navigate = useNavigate();
@@ -9,9 +55,9 @@ const NotificationFeed = ({ notifications, loading }) => {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-16 w-full bg-slate-50 animate-pulse rounded-2xl"></div>
+          <div key={i} className="h-14 w-full bg-slate-50 animate-pulse rounded-2xl"></div>
         ))}
       </div>
     );
@@ -26,10 +72,18 @@ const NotificationFeed = ({ notifications, loading }) => {
     );
   }
 
+  // Sắp xếp các thông báo mới nhất lên đầu dựa trên tất cả các mốc thời gian khả dụng
+  const sortedNotifications = [...notifications].sort((a, b) => {
+    const getTs = (n) => n.timestamp || n.time || n.paymentDate || n.createdAt || n.createAt;
+    const timeA = new Date(getTs(a)).getTime() || 0;
+    const timeB = new Date(getTs(b)).getTime() || 0;
+    return timeB - timeA;
+  });
+
   // Calculate pagination
-  const totalPages = Math.ceil(notifications.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedNotifications.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentItems = notifications.slice(startIndex, startIndex + itemsPerPage);
+  const currentItems = sortedNotifications.slice(startIndex, startIndex + itemsPerPage);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -45,86 +99,119 @@ const NotificationFeed = ({ notifications, loading }) => {
   };
 
   const handleDetail = (notif) => {
-    // Navigate to detail page with notification data
-    navigate(`/accounting/transaction/${notif.id}`, { state: { transaction: notif } });
+    navigate(`/accounting/transaction/${encodeURIComponent(notif.id)}`, { state: { transaction: notif } });
   };
 
-  // Hàm xử lý thông báo thông minh (Smart Link)
   const resolveMessage = (notif) => {
     if (!notif.message) return "";
-    if (notif.count !== undefined) {
-      // Thay thế {count} hoặc con số bất kỳ sau chữ "Có " bằng số lượng thực tế
-      return notif.message.replace(/{count}|(?<=Có )\d+/, notif.count);
-    }
     return notif.message;
   };
 
+  const getTypeConfig = (notif) => {
+    const uiType = notif.uiType || notif.type || 'info';
+    const txType = notif.transactionType;
+    if (uiType === 'warning') return {
+      iconEl: <WarningIcon className="text-sm" />,
+      iconColor: 'text-amber-500',
+      badge: txType || 'List',
+      badgeClass: 'bg-amber-50 text-amber-600 border-amber-200',
+    };
+    if (uiType === 'report') return {
+      iconEl: <span className="material-symbols-outlined text-sm">bar_chart</span>,
+      iconColor: 'text-violet-500',
+      badge: txType || 'Report',
+      badgeClass: 'bg-violet-50 text-violet-600 border-violet-200',
+    };
+    return {
+      iconEl: <SuccessIcon className="text-sm" />,
+      iconColor: 'text-emerald-500',
+      badge: txType || 'Voucher',
+      badgeClass: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    };
+  };
+
   return (
-    <div className="flex flex-col h-full justify-between">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-        {currentItems.map((notif) => (
-          <div 
-            key={notif.id} 
-            onClick={() => handleDetail(notif)}
-            className="rounded-2.5xl bg-slate-50/50 hover:bg-white hover:shadow-float transition-all duration-300 border border-transparent hover:border-slate-100 group cursor-pointer p-3 sm:p-4 lg:p-[var(--space-base)]"
-          >
-            <div className="flex gap-4 items-start">
-              <div 
-                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 ${
-                  notif.type === 'warning' ? 'text-amber-600' : 'text-emerald-600'
-                }`}
-                style={{ backgroundColor: `color-mix(in srgb, currentColor, transparent 92%)` }}
-              >
-                  {notif.type === 'warning' ? <WarningIcon className="text-lg" /> : <SuccessIcon className="text-lg" />}
-              </div>
-              <div className="space-y-1 pt-1">
-                <p className="text-body-sm text-acc-text-muted group-hover:text-acc-text-main leading-snug line-clamp-2">
-                  {resolveMessage(notif)}
-                </p>
-                <div className="flex items-center gap-2">
-                   <p className="text-label-xs text-acc-text-light opacity-60">{notif.time || 'Vừa xong'}</p>
-                   <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-                   <p className="text-label-xs text-acc-primary font-bold">Chi tiết →</p>
+    <div className="flex flex-col h-full bg-white transition-all select-none">
+      {/* Items Container */}
+      <div className="flex-1 flex flex-col gap-2.5 sm:gap-3 overflow-hidden">
+        {currentItems.map((notif) => {
+          const cfg = getTypeConfig(notif);
+          return (
+            <div
+              key={notif.id}
+              onClick={() => handleDetail(notif)}
+              className="rounded-2.5xl bg-slate-50/50 hover:bg-white hover:shadow-float active:scale-[0.99] transition-all duration-300 border border-slate-200 hover:border-slate-300 group cursor-pointer p-3.5 lg:p-[var(--space-base,14px)]"
+            >
+              <div className="flex gap-4 items-start">
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all group-hover:bg-white group-hover:shadow-md ${cfg.iconColor}`}
+                  style={{ backgroundColor: `color-mix(in srgb, currentColor, transparent 94%)` }}
+                >
+                  {cfg.iconEl}
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <p className="text-[13px] sm:text-body-sm text-acc-text-muted group-hover:text-acc-text-main leading-snug font-bold line-clamp-2">
+                    {resolveMessage(notif)}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <p className="text-[9px] sm:text-label-xs text-acc-text-light/70 font-black uppercase tracking-tighter">
+                      <RelativeTime notif={notif} />
+                    </p>
+                    <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
+                    <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md border ${cfg.badgeClass}`}>
+                      {cfg.badge}
+                    </span>
+                    <p className="text-[9px] sm:text-label-xs text-acc-primary font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0 ml-auto">CHI TIẾT →</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Pagination Controls - Slimmer on small screens */}
-      <div className="mt-2 sm:mt-6 pt-2 sm:pt-4 border-t border-slate-50 flex items-center justify-between shrink-0">
+
+      {/* Synchronized Pagination Footer - Refined spacing */}
+      <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1">
           <button 
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="p-1 sm:p-2 rounded-xl hover:bg-slate-100 disabled:opacity-30 transition-colors"
+            className="w-9 h-9 rounded-xl hover:bg-slate-100 disabled:opacity-20 transition-all flex items-center justify-center border border-transparent active:scale-90"
           >
-            <span className="material-symbols-outlined text-xs sm:text-sm">chevron_left</span>
+            <span className="material-symbols-outlined text-[18px]">chevron_left</span>
           </button>
           
-          <div className="flex items-center gap-1 sm:gap-2 px-1 sm:px-3">
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-xl border border-slate-100">
              <input 
                type="text" 
                value={currentPage}
                onChange={handleJumpPage}
-               className="w-8 h-6 sm:w-10 sm:h-8 border border-slate-200 rounded-lg text-center text-[10px] sm:text-label-xs font-black text-acc-primary"
+               className="w-5 h-5 border-none bg-transparent p-0 text-center text-label-xs font-black text-acc-primary focus:ring-0"
              />
-             <span className="text-[10px] sm:text-label-xs text-acc-text-light">/ {totalPages}</span>
+             <span className="text-label-xs font-black text-acc-text-light/40 tracking-widest">/ {totalPages}</span>
           </div>
 
           <button 
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="p-1 sm:p-2 rounded-xl hover:bg-slate-100 disabled:opacity-30 transition-colors"
+            className="w-9 h-9 rounded-xl hover:bg-slate-100 disabled:opacity-20 transition-all flex items-center justify-center border border-transparent active:scale-90"
           >
-            <span className="material-symbols-outlined text-xs sm:text-sm">chevron_right</span>
+            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
           </button>
         </div>
         
-        <p className="text-[9px] sm:text-[0.625rem] font-bold text-acc-text-light uppercase tracking-tighter">
-          {startIndex + 1}-{Math.min(startIndex + itemsPerPage, notifications.length)} / {notifications.length}
-        </p>
+        <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-50/80 rounded-2xl border border-slate-100 shadow-sm">
+           <div className="text-right">
+             <p className="text-[10px] font-black text-acc-text-main tabular-nums leading-none">
+               {startIndex + 1} - {Math.min(startIndex + itemsPerPage, notifications.length)}
+             </p>
+             <p className="text-[8px] font-bold text-acc-text-light/60 uppercase tracking-widest mt-0.5">GIAO DỊCH</p>
+           </div>
+           <div className="w-1.5 h-1.5 rounded-full bg-acc-primary/10 flex items-center justify-center">
+             <div className="w-1 h-1 rounded-full bg-acc-primary animate-pulse"></div>
+           </div>
+        </div>
       </div>
     </div>
   );
