@@ -18,7 +18,14 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
       sortableItems.sort((a, b) => {
         let aValue, bValue;
 
-        if (sortConfig.key === 'value') {
+        // Xử lý đặc biệt cho các trường ID để sort theo số
+        if (sortConfig.key === 'displayID') {
+          aValue = Number(a.invoiceID) || 0;
+          bValue = Number(b.invoiceID) || 0;
+        } else if (sortConfig.key === 'displayOrderID') {
+          aValue = Number(a.orderID) || 0;
+          bValue = Number(b.orderID) || 0;
+        } else if (sortConfig.key === 'value') {
           const aRemaining = (a.totalAmount || 0) - (a.paidAmount || 0);
           const bRemaining = (b.totalAmount || 0) - (b.paidAmount || 0);
           aValue = isCompleted ? (a.totalAmount || 0) : aRemaining;
@@ -26,6 +33,12 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
         } else {
           aValue = a[sortConfig.key] || '';
           bValue = b[sortConfig.key] || '';
+        }
+
+        // Nếu là string thì dùng natural sort (hỗ trợ số trong chuỗi)
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          const comparison = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
+          return sortConfig.direction === 'asc' ? comparison : -comparison;
         }
 
         if (aValue < bValue) {

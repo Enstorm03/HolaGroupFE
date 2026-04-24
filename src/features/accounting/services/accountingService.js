@@ -79,11 +79,18 @@ const getRelativeTime = (dateStr) => {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffMins = Math.floor(diffMs / (1000 * 60));
-  if (diffDays > 30) return date.toLocaleDateString('vi-VN');
-  if (diffDays > 0) return diffDays === 1 ? 'Hôm qua' : `${diffDays} ngày trước`;
+  
+  // Nếu đã quá 24 giờ, hiển thị rõ ngày tháng
+  if (diffHours >= 24) {
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+  
   if (diffHours > 0) return `${diffHours} giờ trước`;
   if (diffMins > 0) return `${diffMins} phút trước`;
   return 'Vừa xong';
@@ -93,17 +100,54 @@ const getRelativeTime = (dateStr) => {
  * Tìm thông tin khách hàng từ ID
  */
 const getCustomerDetails = (customerID) => {
+  if (!customerID) return { customerName: 'Khách hàng lẻ', email: null, phoneNumber: null, address: null };
+  
   const customer = dbData.customers?.find(c => c.customerID === Number(customerID));
   if (customer) {
     return {
       ...customer,
-      customerName: customer.companyName || `${customer.lastName} ${customer.firstName}`
+      customerName: customer.companyName || `${customer.lastName} ${customer.firstName}` || 'Khách hàng chưa rõ'
     };
   }
+  
   return {
-    customerName: isNaN(customerID) ? customerID : 'Khách hàng lẻ',
+    customerName: isNaN(Number(customerID)) ? String(customerID) : 'Khách hàng lẻ',
     email: null, phoneNumber: null, address: null
   };
+};
+
+/**
+ * Chuyển Date hoặc chuỗi về YYYY-MM-DD để so sánh chuẩn
+ */
+const toISODate = (d) => {
+  if (!d) return null;
+  const dateObj = (d instanceof Date) ? d : parseDateToObj(d);
+  if (!dateObj) return null;
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateToObj = (s) => {
+  if (!s) return null;
+  // Bỏ đi phần thời gian (vd: T15:57:16Z) để tránh lỗi NaN khi parse
+  const datePart = s.split('T')[0]; 
+  const parts = datePart.split(/[-/]/).map(Number);
+  if (parts.length >= 3) {
+    if (parts[0] > 1000) return new Date(parts[0], parts[1] - 1, parts[2] || 1);
+    return new Date(parts[2], parts[1] - 1, parts[0] || 1);
+  }
+  return null;
+};
+
+const getISOWeek = (date) => {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return 0;
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 };
 
 // ─── LOCAL STORAGE HELPERS ───────────────────────────────────────────────────
@@ -131,6 +175,13 @@ const getLocalPayments = () => {
       localStorage.setItem('added_payments', JSON.stringify(cleanList));
     }
     return cleanList;
+  } catch (e) { return []; }
+};
+
+const getLocalOrderItems = () => {
+  try {
+    const raw = localStorage.getItem('added_order_items');
+    return raw ? JSON.parse(raw) : [];
   } catch (e) { return []; }
 };
 
@@ -176,88 +227,130 @@ const getAllCurrentPayments = () => {
  *   count: number?,     -- số lượng (cho loại List)
  * }
  */
-const buildNotifications = () => {
-  const now = new Date();
-  
-  // Lưu mốc thời gian "khởi tạo" vào localStorage để giữ tính ổn định khi F5
-  let sessionStart = localStorage.getItem('accounting_session_start');
-  if (!sessionStart) {
-    sessionStart = new Date().toISOString();
-    localStorage.setItem('accounting_session_start', sessionStart);
-  }
-  const sessionStartDate = new Date(sessionStart);
-
+/**
+ * Tự động sinh danh sách notifications từ dữ liệu thực, có lọc theo thời gian.
+ */
+const buildNotifications = (timeframe = 'monthly', options = {}) => {
   const allInvoices = getAllCurrentInvoices();
   const allPayments = getAllCurrentPayments();
+  const reports = dbData.quarterly_reports || [];
   const notifications = [];
 
-  // ── 1. LIST: Khách hàng quá hạn ──────────────────────────────────────────
+  const now = new Date();
+  const isDaily = timeframe === 'daily';
+  const selectedDayNum = options.selectedDay ? parseInt(options.selectedDay, 10) : null;
+  const filterY = parseInt((options.filterDate || "").split('-')[0]) || now.getFullYear();
+  const filterM = parseInt((options.filterDate || "").split('-')[1]) || (now.getMonth() + 1);
+
+
+
+  // 1. Phân loại và Lọc dữ liệu bằng một Helper hợp nhất
+  const matchesTimeframe = (dateStr) => {
+    const pd = parseDateToObj(dateStr);
+    if (!pd) return false;
+
+    if (timeframe === 'daily') {
+      const selectedDayNum = options.selectedDay ? parseInt(options.selectedDay, 10) : now.getDate();
+      const filterY = parseInt((options.filterDate || "").split('-')[0]) || now.getFullYear();
+      const filterM = parseInt((options.filterDate || "").split('-')[1]) || (now.getMonth() + 1);
+      return pd.getFullYear() === filterY && (pd.getMonth() + 1) === filterM && pd.getDate() === selectedDayNum;
+      
+    } else if (timeframe === 'weekly') {
+      const [yStr, wStr] = (options.filterWeek || "").split('-W');
+      const targetY = parseInt(yStr) || now.getFullYear();
+      const targetW = parseInt(wStr) || getISOWeek(now);
+      return pd.getFullYear() === targetY && getISOWeek(pd) === targetW;
+      
+    } else if (timeframe === 'monthly') {
+      // Tab "Tháng" hiển thị 12 tháng của năm, nên ta lọc theo Năm (filterYear)
+      const targetY = parseInt(options.filterYear) || (options.filterDate ? parseInt(options.filterDate.split('-')[0]) : now.getFullYear());
+      return pd.getFullYear() === targetY;
+      
+    } else {
+      // Tab "Năm" (yearly) hiển thị N năm
+      const yearsCount = parseInt(options.filterYearsCount) || 5;
+      const endY = now.getFullYear();
+      const startY = endY - yearsCount + 1;
+      const y = pd.getFullYear();
+      return y >= startY && y <= endY;
+    }
+  };
+
+  const filteredPayments = allPayments.filter(p => matchesTimeframe(p.paymentDate));
+  const filteredReports = reports.filter(r => matchesTimeframe(r.createdAt));
+
+  // ── A. LIST (Công nợ - Luôn lọc theo matchesTimeframe) ──
+  // 1. Quá hạn
   const overdueInvoices = allInvoices.filter(inv => {
     const s = normalizeInvoiceStatus(inv.status);
-    return s === 'overdue' || (s !== 'paid' && inv.dueDate && new Date(inv.dueDate) < new Date());
+    const isOverdue = s === 'overdue' || (s !== 'paid' && inv.dueDate && new Date(inv.dueDate) < new Date());
+    return isOverdue && matchesTimeframe(inv.dueDate);
   });
+
   if (overdueInvoices.length > 0) {
     notifications.push({
       id: 'notif-overdue',
-      transactionType: 'List',
+      type: 'List',
       uiType: 'warning',
-      message: `Có ${overdueInvoices.length} khách hàng quá hạn thanh toán trên 30 ngày.`,
-      timestamp: new Date(sessionStartDate.getTime() - 10 * 60000).toISOString(),
+      message: `Hệ thống ghi nhận ${overdueInvoices.length} hóa đơn quá hạn cần xử lý.`,
+      timestamp: overdueInvoices[0].dueDate,
+      status: 'Cần xử lý',
       count: overdueInvoices.length,
     });
   }
 
-  // ── 2. LIST: Hóa đơn chưa thanh toán (partial) ───────────────────────────
-  const partialInvoices = allInvoices.filter(inv => normalizeInvoiceStatus(inv.status) === 'partial');
+  // 2. Thanh toán một phần
+  const partialInvoices = allInvoices.filter(inv => {
+    const isPartial = normalizeInvoiceStatus(inv.status) === 'partial';
+    return isPartial && matchesTimeframe(inv.invoiceDate || inv.createAt);
+  });
+
   if (partialInvoices.length > 0) {
     notifications.push({
       id: 'notif-partial',
-      transactionType: 'List',
-      uiType: 'warning',
-      message: `${partialInvoices.length} hóa đơn thanh toán chưa đủ, cần theo dõi.`,
-      timestamp: new Date(sessionStartDate.getTime() - 30 * 60000).toISOString(),
+      type: 'List',
+      uiType: 'info',
+      message: `Hệ thống ghi nhận ${partialInvoices.length} hóa đơn thanh toán một phần cần theo dõi.`,
+      timestamp: partialInvoices[0].invoiceDate || partialInvoices[0].createAt,
+      status: 'Đang theo dõi',
       count: partialInvoices.length,
     });
   }
 
-  // ── 3. VOUCHER: Mỗi lần thanh toán thành công → 1 card Voucher ───────────
-  allPayments.forEach(pay => {
+  // ── B. VOUCHER (Phiếu thu - Đã được lọc bởi filteredPayments) ──
+  const allOrders = dbData.orders || [];
+  filteredPayments.forEach(pay => {
+    const invoice = allInvoices.find(i => i.invoiceID === pay.invoiceID);
+    const order = allOrders.find(o => o.orderID === invoice?.orderID);
+    const customer = getCustomerDetails(invoice?.customerID || order?.customerID);
     const voucherCode = pay.voucherCode || formatDisplayCode(pay.paymentID, 'VCHR');
-    const invoiceCode = formatDisplayCode(pay.invoiceID, 'INV');
-    const customer = getCustomerDetails(
-      allInvoices.find(i => i.invoiceID === pay.invoiceID)?.customerID
-    );
+    
     notifications.push({
       id: `notif-pay-${pay.paymentID}`,
-      transactionType: 'Voucher',
+      type: 'Voucher',
       uiType: 'info',
-      message: `Phiếu thu ${voucherCode} — ${invoiceCode} — ${customer.customerName} đã được ký duyệt.`,
+      message: `Phiếu thu ${voucherCode} — ${customer.customerName} đã được duyệt.`,
       timestamp: pay.paymentDate,
+      status: 'Hoàn thành',
       paymentID: pay.paymentID,
-      invoiceID: pay.invoiceID,
-      voucherCode,
     });
   });
 
-  // ── 4. REPORT: Mỗi báo cáo quý → 1 card Report ──────────────────────────
-  const reports = dbData.quarterly_reports || [];
-  reports.forEach(rpt => {
-    const statusLabel = rpt.status === 'PENDING_APPROVAL'
-      ? 'đã sẵn sàng phê duyệt'
-      : rpt.status === 'APPROVED'
-      ? 'đã được phê duyệt'
-      : 'đang xử lý';
+  // ── C. REPORT (Báo cáo - Đã được lọc bởi filteredReports) ──
+  filteredReports.forEach(rpt => {
     notifications.push({
       id: `notif-rpt-${rpt.reportID}`,
-      transactionType: 'Report',
+      type: 'Report',
       uiType: 'report',
-      message: `${rpt.title} ${statusLabel}.`,
+      message: `${rpt.title} đã sẵn sàng phê duyệt.`,
       timestamp: rpt.createdAt,
+      status: rpt.status === 'APPROVED' ? 'Đã duyệt' : 'Chờ duyệt',
       reportID: rpt.reportID,
     });
   });
 
-  return notifications;
+  // Sắp xếp theo thời gian mới nhất
+  return notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 };
 
 /**
@@ -269,13 +362,15 @@ const buildExtendedDetail = (notifId) => {
   const allPayments = getAllCurrentPayments();
 
   // ── LIST: Khách hàng quá hạn ─────────────────────────────────────────────
+  const allOrders = dbData.orders || [];
   if (notifId === 'notif-overdue') {
     const overdueInvoices = allInvoices.filter(inv => {
       const s = normalizeInvoiceStatus(inv.status);
       return s === 'overdue' || (s !== 'paid' && inv.dueDate && new Date(inv.dueDate) < new Date());
     });
     const rows = overdueInvoices.map(inv => {
-      const customer = getCustomerDetails(inv.customerID);
+      const order = allOrders.find(o => o.orderID === inv.orderID);
+      const customer = getCustomerDetails(inv.customerID || order?.customerID);
       const due = new Date(inv.dueDate);
       const diffDays = Math.ceil((new Date() - due) / (1000 * 60 * 60 * 24));
       const remaining = (Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0);
@@ -298,7 +393,8 @@ const buildExtendedDetail = (notifId) => {
   if (notifId === 'notif-partial') {
     const partialInvoices = allInvoices.filter(inv => normalizeInvoiceStatus(inv.status) === 'partial');
     const rows = partialInvoices.map(inv => {
-      const customer = getCustomerDetails(inv.customerID);
+      const order = allOrders.find(o => o.orderID === inv.orderID);
+      const customer = getCustomerDetails(inv.customerID || order?.customerID);
       const remaining = (Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0);
       return {
         id: formatDisplayCode(inv.invoiceID, 'INV'),
@@ -322,7 +418,8 @@ const buildExtendedDetail = (notifId) => {
     if (!pay) return { type: 'generic', data: {} };
 
     const inv = allInvoices.find(i => i.invoiceID === pay.invoiceID);
-    const customer = getCustomerDetails(inv?.customerID);
+    const order = allOrders.find(o => o.orderID === inv?.orderID);
+    const customer = getCustomerDetails(inv?.customerID || order?.customerID);
     const invoiceCode = formatDisplayCode(pay.invoiceID, 'INV');
     const orderCode = inv?.orderID ? formatDisplayCode(inv.orderID, 'ORD') : 'N/A';
     const voucherCode = pay.voucherCode || formatDisplayCode(pay.paymentID, 'VCHR');
@@ -393,16 +490,10 @@ const mockDashboardStats = (timeframe = 'monthly', options = {}) => {
     const targetY = y || now.getFullYear();
     const targetM = m || (now.getMonth() + 1);
     const targetD = options.selectedDay || now.getDate();
-    const targetDate = new Date(targetY, targetM - 1, targetD);
+    const targetISO = `${targetY}-${String(targetM).padStart(2, '0')}-${String(targetD).padStart(2, '0')}`;
 
-    filteredInvoices = allInvoices.filter(inv => {
-      const d = pDate(inv.invoiceDate);
-      return d && isSameDay(d, targetDate);
-    });
-    filteredPayments = allPayments.filter(p => {
-      const d = pDate(p.paymentDate);
-      return d && isSameDay(d, targetDate);
-    });
+    filteredInvoices = allInvoices.filter(inv => toISODate(inv.invoiceDate) === targetISO);
+    filteredPayments = allPayments.filter(p => toISODate(p.paymentDate) === targetISO);
   } else if (timeframe === 'weekly') {
     const [y, w] = (options.filterWeek || "").split('-W').map(Number);
     // Rough week matching logic: check if the date falls in that week
@@ -460,15 +551,35 @@ const mockDashboardStats = (timeframe = 'monthly', options = {}) => {
     totalCollected: totalCollected,
     pendingInvoices: filteredInvoices.length.toString(),
     cashBalance: dbData.stats.totalBalance || '1.250.000.000',
-    notifications: buildNotifications(),
+    notifications: buildNotifications(timeframe, options),
   };
 };
 
 const mockInvoices = () => {
   const allPayments = getAllCurrentPayments();
+  const allOrders = dbData.orders || [];
+  const allOrderItems = [...(dbData.orderItems || []), ...getLocalOrderItems()];
+  const allProducts = dbData.products || [];
+
   return getAllCurrentInvoices().map(inv => {
-    const customer = getCustomerDetails(inv.customerID);
-    // Tìm ngày thanh toán cuối cùng nếu đã thanh toán
+    const order = allOrders.find(o => o.orderID === inv.orderID);
+    const customer = getCustomerDetails(inv.customerID || order?.customerID);
+    
+    // Join items from OrderItems and Products
+    const items = allOrderItems
+      .filter(oi => oi.orderID === inv.orderID)
+      .map(oi => {
+        const product = allProducts.find(p => p.productID === oi.productID);
+        return {
+          ...oi,
+          productName: product?.productName || 'Sản phẩm không xác định',
+          unit: product?.unit || 'đv'
+        };
+      });
+
+    // Fallback: If no order items found but invoice has embedded items (legacy/local)
+    const finalItems = items.length > 0 ? items : (inv.items || []);
+
     const normalizedStatus = normalizeInvoiceStatus(inv.status);
     const payments = allPayments.filter(p => p.invoiceID === inv.invoiceID && (p.status === 'completed' || normalizeInvoiceStatus(p.status) === 'paid'));
     let paidAt = null;
@@ -493,7 +604,7 @@ const mockInvoices = () => {
       ...customer,
       orderStatus: getStatusLabelVN(inv.status),
       date: inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString('vi-VN') : 'N/A',
-      items: inv.items || [],
+      items: finalItems,
       paidAt: paidAt
     };
   });
@@ -521,11 +632,13 @@ const mockDebtReport = () => {
   const allInvoices = getAllCurrentInvoices();
   const today = new Date();
 
+  const allOrders = dbData.orders || [];
   // Chỉ lấy hóa đơn chưa thanh toán xong (pending, partial, overdue)
   const debtItems = allInvoices
     .filter(inv => normalizeInvoiceStatus(inv.status) !== 'paid')
     .map(inv => {
-      const customer = getCustomerDetails(inv.customerID);
+      const order = allOrders.find(o => o.orderID === inv.orderID);
+      const customer = getCustomerDetails(inv.customerID || order?.customerID);
       const total = Number(inv.totalAmount) || 0;
       const paid = Number(inv.paidAmount) || 0;
       const remaining = total - paid;
@@ -738,7 +851,11 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
 
       const matches = invoices.filter(inv => matchesDate(inv.invoiceDate || inv.createAt || inv.createdAt));
       const revenue = matches.reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
-      const collected = payments.filter(p => matchesDate(p.paymentDate || p.createAt || p.createdAt)).reduce((sum, p) => sum + safeNumber(p.amount), 0);
+      
+      const dayPayments = payments.filter(p => matchesDate(p.paymentDate || p.createAt || p.createdAt));
+      const collected = dayPayments.reduce((sum, p) => sum + safeNumber(p.amount), 0);
+      
+      const dayReports = (dbData.quarterly_reports || []).filter(r => matchesDate(r.createdAt));
       
       let endOfDay = new Date(y, m - 1, day, 23, 59, 59);
       if (day === now.getDate() && m === (now.getMonth() + 1) && y === now.getFullYear()) endOfDay = now;
@@ -746,7 +863,6 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
       const debt = getDebtAtSnapshot(endOfDay);
       const actual = revenue - debt;
       
-      // Make heat intensity more sensitive so small amounts still pop (using square root scaling)
       const rawIntensity = revenue / 50000000;
       const intensity = revenue > 0 ? Math.min(1, Math.pow(rawIntensity, 0.5) * 0.8 + 0.2) : 0; 
       
@@ -759,7 +875,9 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
         debt,          
         actual,
         intensity,
-        invoiceCount: matches.length
+        invoiceCount: matches.length,
+        paymentCount: dayPayments.length,
+        reportCount: dayReports.length
       });
     }
   }
@@ -781,14 +899,15 @@ const accountingService = {
       const allInvoices = getAllCurrentInvoices();
       const allPayments = getAllCurrentPayments();
       // Chuyển đổi timeframe sang startDate/endDate chuẩn để giả lập API thật
+      // Nếu có startDate/endDate từ options thì dùng luôn
       const data = computeChartData(timeframe, allInvoices, allPayments, options);
       return data;
     }
     // Chuẩn hóa params theo b.md: ?startDate=...&endDate=...&groupBy=...
     const params = {
-      startDate: options.startDate || '2024-01-01',
-      endDate: options.endDate || '2024-12-31',
-      groupBy: timeframe === 'monthly' ? 'month' : timeframe === 'daily' ? 'day' : 'year'
+      startDate: options.startDate || '2026-01-01',
+      endDate: options.endDate || '2026-12-31',
+      groupBy: timeframe === 'monthly' ? 'month' : timeframe === 'daily' ? 'day' : timeframe === 'weekly' ? 'week' : 'year'
     };
     const response = await apiClient.get('/api/reports/revenue', { params });
     return response.data;
@@ -839,13 +958,17 @@ const accountingService = {
         results[cat.categoryName] = 0;
       });
 
+      const allOrderItems = dbData.orderItems || [];
+
       filteredInvoices.forEach(inv => {
-        (inv.items || []).forEach(item => {
+        // Lấy items từ orderItems thay vì inv.items
+        const items = allOrderItems.filter(oi => oi.orderID === inv.orderID);
+        items.forEach(item => {
           const product = products.find(p => p.productID === item.productID);
           if (product) {
             const category = categories.find(c => c.categoryID === product.categoryID);
             if (category) {
-              results[category.categoryName] += safeNumber(item.unitPrice || item.price) * (item.quantity || 1);
+              results[category.categoryName] += safeNumber(item.unitPrice) * (item.quantity || 1);
             }
           }
         });
@@ -935,19 +1058,38 @@ const accountingService = {
       const local = getLocalInvoices();
       const all = [...local, ...dbData.invoices];
       const maxId = all.reduce((max, inv) => Math.max(max, Number(inv.invoiceID) || 0), 0);
+      
+      const orderID = data.orderID || (200 + maxId); // Mock orderID
+      
       const newInvoice = {
         ...data,
         invoiceID: maxId + 1,
+        orderID: orderID,
         paidAmount: data.paidAmount || 0,
         status: data.status || 'pending',
+        createAt: new Date().toISOString().split('T')[0]
       };
+      
+      // Store items in localOrderItems if present
+      if (data.items && data.items.length > 0) {
+        const localItems = getLocalOrderItems();
+        const itemsToStore = data.items.map(it => ({
+          orderID: orderID,
+          productID: it.productID,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice || it.price,
+          discount: it.discount || 0
+        }));
+        localStorage.setItem('added_order_items', JSON.stringify([...itemsToStore, ...localItems]));
+      }
+
       localStorage.setItem('added_invoices', JSON.stringify([newInvoice, ...local]));
 
       const customer = getCustomerDetails(newInvoice.customerID);
       return {
         ...newInvoice,
         displayID: formatDisplayCode(newInvoice.invoiceID, 'INV'),
-        displayOrderID: isNaN(newInvoice.orderID) ? newInvoice.orderID : formatDisplayCode(newInvoice.orderID, 'ORD'),
+        displayOrderID: formatDisplayCode(orderID, 'ORD'),
         ...customer,
         orderStatus: getStatusLabelVN(newInvoice.status),
         date: newInvoice.invoiceDate ? new Date(newInvoice.invoiceDate).toLocaleDateString('vi-VN') : 'N/A',

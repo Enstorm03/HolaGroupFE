@@ -290,7 +290,7 @@ const AccountingDashboard = () => {
                  </div>
                  
                  {/* Sub-filters dynamically displayed based on timeframe */}
-                 <div className="flex flex-wrap sm:flex-nowrap gap-3 items-center w-full sm:w-max animate-fade-in sm:pl-4 sm:border-l border-slate-200/50 relative">
+                 <div className="flex flex-wrap sm:flex-nowrap gap-3 items-center w-full sm:w-max animate-fade-in sm:pl-4 sm:border-l border-slate-200/50 relative z-50">
                    {timeframe === 'daily' && (() => {
                      const [y, m] = filterDate.split('-').map(Number);
                      return (

@@ -1206,18 +1206,33 @@ const InvoiceList = () => {
   });
 
   const sortedInvoices = [...filteredInvoices].sort((a, b) => {
+    let aValue, bValue;
+
     if (sortConfig.key === 'date') {
       const dateA = new Date((a.date || '').split('/').reverse().join('-'));
       const dateB = new Date((b.date || '').split('/').reverse().join('-'));
       return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
     }
-    if (sortConfig.key === 'totalAmount') {
-      return sortConfig.direction === 'asc' ? (a.totalAmount || 0) - (b.totalAmount || 0) : (b.totalAmount || 0) - (a.totalAmount || 0);
+
+    if (sortConfig.key === 'invoiceID') {
+      aValue = Number(a.invoiceID) || 0;
+      bValue = Number(b.invoiceID) || 0;
+    } else if (sortConfig.key === 'totalAmount') {
+      aValue = Number(a.totalAmount) || 0;
+      bValue = Number(b.totalAmount) || 0;
+    } else {
+      aValue = a[sortConfig.key] || '';
+      bValue = b[sortConfig.key] || '';
     }
-    const valA = String(a[sortConfig.key] || '').toLowerCase();
-    const valB = String(b[sortConfig.key] || '').toLowerCase();
-    if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+
+    // Nếu là string thì dùng natural sort
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      const comp = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
+      return sortConfig.direction === 'asc' ? comp : -comp;
+    }
+
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
 
