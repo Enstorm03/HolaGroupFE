@@ -14,6 +14,7 @@ const AccountingReport = () => {
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('monthly');
   const [revenueData, setRevenueData] = useState([]);
+  const [heatmapData, setHeatmapData] = useState([]); // Dữ liệu riêng cho biểu đồ nhiệt (luôn là tháng)
   const [categoryData, setCategoryData] = useState([]);
   const [performanceData, setPerformanceData] = useState([]);
   const [error, setError] = useState(null);
@@ -91,14 +92,17 @@ const AccountingReport = () => {
       setError(null);
       
       const options = { filterWeek, filterYear, filterYearsCount, filterDate, selectedDay };
+      const heatmapOptions = { filterWeek, filterYear, filterYearsCount, filterDate }; // Không lấy theo ngày để heatmap luôn có data tháng
       
-      const [rev, cat, perf] = await Promise.all([
+      const [rev, heat, cat, perf] = await Promise.all([
         accountingService.getRevenueData(timeframe, options),
+        timeframe === 'daily' ? accountingService.getRevenueData('daily', heatmapOptions) : Promise.resolve([]),
         accountingService.getCategoryRevenueReport(timeframe, options),
         accountingService.getSalesPerformanceReport(timeframe, options)
       ]);
 
       setRevenueData(rev);
+      setHeatmapData(heat);
       setCategoryData(cat);
       setPerformanceData(perf);
     } catch (err) {
@@ -121,18 +125,8 @@ const AccountingReport = () => {
       const style = document.createElement('style');
       style.innerHTML = `
         @media print {
-          html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
-          #root { display: none !important; }
-          #printable-accounting-report { 
-            display: block !important; 
-            width: 100% !important;
-            padding: 5mm 15mm 15mm 15mm !important; 
-            margin: 0 auto !important; 
-            background: white !important; 
-            visibility: visible !important; 
-          }
-          * { -webkit-print-color-adjust: exact !important; }
-          @page { size: landscape; margin: 5mm 15mm 15mm 15mm; }
+          #root, .acc-modal-overlay { display: none !important; }
+          body > *:not(#printable-accounting-report) { display: none !important; }
         }
       `;
       document.head.appendChild(style);
@@ -159,7 +153,7 @@ const AccountingReport = () => {
       const topSales = performanceData.length > 0 ? [...performanceData].sort((a, b) => b.revenue - a.revenue)[0].name : 'N/A';
       
       const summaryData = [
-        { 'Chỉ số': 'TỔNG DOANH THU', 'Giá trị': totalRevenue.toLocaleString('vi-VN') + ' VNĐ' },
+        { 'Chỉ số': 'TỔNG DOANH THU', 'Giá trị': totalRevenue.toLocaleString('vi-VN') + ' VND' },
         { 'Chỉ số': 'SỐ ĐƠN HÀNG', 'Giá trị': totalOrders },
         { 'Chỉ số': 'NHÂN VIÊN XUẤT SẮC', 'Giá trị': topSales },
         { 'Chỉ số': 'KỲ BÁO CÁO', 'Giá trị': periodLabel }
@@ -168,27 +162,27 @@ const AccountingReport = () => {
       // 2. Prepare Trend Data
       const trendExcelData = revenueData.map(item => ({
         'Thời gian': item.label,
-        'Doanh thu (VNĐ)': item.revenue,
-        'Công nợ (VNĐ)': item.expense,
+        'Doanh thu (VND)': item.revenue,
+        'Công nợ (VND)': item.expense,
         'Số hóa đơn': item.invoiceCount || 0,
-        'Thực thu (VNĐ)': item.collected
+        'Thực thu (VND)': item.collected
       }));
 
       // 3. Prepare Category Data
       const categoryExcelData = categoryData.map(cat => ({
         'Danh mục': cat.name,
-        'Doanh thu (VNĐ)': cat.value,
+        'Doanh thu (VND)': cat.value,
         'Tỷ trọng (%)': totalRevenue > 0 ? ((cat.value / totalRevenue) * 100).toFixed(1) + '%' : '0%'
       }));
 
       // 4. Prepare Performance Data
       const performanceExcelData = performanceData.map(p => ({
         'Nhân viên': p.name,
-        'Doanh thu đạt được (VNĐ)': p.revenue,
+        'Doanh thu đạt được (VND)': p.revenue,
         'Đơn hàng': p.orderCount,
-        'Mục tiêu (VNĐ)': p.target,
+        'Mục tiêu (VND)': p.target,
         'Hoàn thành (%)': p.achievement.toFixed(1) + '%',
-        'Hoa hồng dự kiến (VNĐ)': p.commission
+        'Hoa hồng dự kiến (VND)': p.commission
       }));
       
       exportToExcel({
@@ -211,6 +205,7 @@ const AccountingReport = () => {
   const getTimeframeText = () => {
     if (timeframe === 'daily') {
       const [y, m] = filterDate.split('-').map(Number);
+      if (selectedDay) return `ngày ${selectedDay}/${m}/${y}`;
       return `tháng ${m}/${y}`;
     }
     if (timeframe === 'weekly') {
@@ -225,19 +220,21 @@ const AccountingReport = () => {
   return (
     <div className="flex-1 flex flex-col min-h-0 w-full animate-fade-up" style={{ gap: 'var(--space-lg)' }}>
       {/* ẨN: TEMPLATE IN BÁO CÁO CHUYÊN NGHIỆP - Dùng Portal để đẩy ra ngoài #root */}
-      {performanceData.length > 0 && createPortal(
+      {performanceData && createPortal(
         <PrintableAccountingReportTemplate 
           performanceData={performanceData}
           categoryData={categoryData}
           revenueData={revenueData}
           timeframeText={getTimeframeText()}
           summaryStats={{
-            totalRevenue: categoryData.reduce((sum, cat) => sum + cat.value, 0),
-            totalOrders: performanceData.reduce((sum, p) => sum + p.orderCount, 0),
-            topSalesperson: performanceData.length > 0 
-              ? performanceData.reduce((prev, current) => (prev.revenue > current.revenue) ? prev : current, performanceData[0]).name 
-              : 'N/A',
-            growthRate: performanceData.reduce((sum, p) => sum + p.revenue, 0) > 0 ? 12.5 : 0
+            totalRevenue: revenueData.reduce((sum, item) => sum + (item.revenue || 0), 0),
+            totalOrders: revenueData.reduce((sum, item) => sum + (item.invoiceCount || 0), 0),
+            topSalesperson: (() => {
+              const activeSales = performanceData.filter(p => (p.revenue || 0) > 0);
+              if (activeSales.length === 0) return 'Không có';
+              return activeSales.reduce((prev, current) => (prev.revenue > current.revenue) ? prev : current, activeSales[0]).name;
+            })(),
+            growthRate: revenueData.reduce((sum, item) => sum + (item.revenue || 0), 0) > 0 ? 12.5 : 0
           }}
         />,
         document.body
@@ -250,6 +247,12 @@ const AccountingReport = () => {
           <p className="text-xs sm:text-sm md:text-base text-acc-text-muted font-medium max-w-2xl flex items-center gap-2">
             Dữ liệu phân tích <span className="text-acc-primary font-black bg-blue-50 px-2 sm:px-2.5 py-0.5 rounded-lg">{getTimeframeText()}</span>
           </p>
+          {timeframe === 'daily' && (
+            <p className="text-[10px] text-amber-600 font-bold uppercase tracking-tight flex items-center gap-1.5 mt-1">
+              <span className="material-symbols-outlined text-[14px]">info</span>
+              Mẹo: Chọn một ô trên biểu đồ nhiệt để xem và in báo cáo chi tiết cho từng ngày
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
@@ -259,7 +262,10 @@ const AccountingReport = () => {
                 <button
                   key={tf}
                   aria-label={`Xem theo ${tf === 'daily' ? 'Ngày' : tf === 'weekly' ? 'Tuần' : tf === 'monthly' ? 'Tháng' : 'Năm'}`}
-                  onClick={() => setTimeframe(tf)}
+                  onClick={() => {
+                    setTimeframe(tf);
+                    setSelectedDay(null);
+                  }}
                   className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-[background-color,color,transform,box-shadow] duration-300 focus-visible:ring-2 focus-visible:ring-acc-primary/20 outline-none ${
                     timeframe === tf 
                       ? 'bg-acc-primary text-white shadow-lg shadow-blue-800/20 translate-y-[-1px]' 
@@ -489,10 +495,10 @@ const AccountingReport = () => {
               <div className="flex-1 min-h-[350px]">
                 {timeframe === 'daily' && chartView === 'heat' ? (
                   <DailyActivityGrid 
-                    apiData={revenueData}
+                    apiData={heatmapData}
                     loading={loading}
                     dateFilter={filterDate}
-                    onSelectDay={(day) => setSelectedDay(day)}
+                    onSelectDay={(day) => setSelectedDay(prev => prev === day ? null : day)}
                     selectedDay={selectedDay}
                   />
                 ) : (

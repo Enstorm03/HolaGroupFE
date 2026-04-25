@@ -28,8 +28,13 @@ const RelativeTime = ({ notif }) => {
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-      if (diffDays > 30) return date.toLocaleDateString('vi-VN');
-      if (diffDays > 0) return diffDays === 1 ? 'Hôm qua' : `${diffDays} ngày trước`;
+      if (diffHours >= 24) {
+        return date.toLocaleDateString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      }
       if (diffHours > 0) return `${diffHours} giờ trước`;
       if (diffMins > 0) return `${diffMins} phút trước`;
       return 'Vừa xong';

@@ -872,7 +872,7 @@
     display: inline-block !important;
   }
 
-  /* Override riêng cho đơn vị tiền tệ VNĐ ở sales-invoices — không bị đè bởi rule span chung */
+  /* Override riêng cho đơn vị tiền tệ VND ở sales-invoices — không bị đè bởi rule span chung */
   .acc-responsive-table tbody td[data-label="Giá trị"] span.inv-vnd-unit,
   .acc-responsive-table tbody td[data-label="Giá trị"] .inv-vnd-unit {
     font-size: 0.75rem !important;
@@ -948,28 +948,30 @@
     border: none !important;
   }
 
-  /* Product Name Header (Full Width) */
   .acc-table-detail tbody td[data-label="Mô tả"],
-  .acc-table-detail tbody td[data-label="Danh mục"] {
-    grid-column: span 2;
-    padding: 0.75rem 1.25rem !important;
-  }
-
-  .acc-table-detail tbody td[data-label="Sản phẩm"] {
-    grid-column: span 1;
-    padding: 0.75rem 1.25rem !important;
+  .acc-table-detail tbody td[data-label="Danh mục"],
+  .acc-table-detail tbody td[data-label="Sản phẩm"],
+  .acc-table-detail tbody td[data-label="Đơn giá"] {
+    grid-column: span 2 !important;
   }
 
   .acc-table-detail tbody td[data-label="Danh mục"] {
-    padding-top: 1.25rem !important;
     order: 1 !important;
+    padding: 1rem 1.25rem 0.5rem 1.25rem !important;
+    border-bottom: none !important;
   }
 
   .acc-table-detail tbody td[data-label="Sản phẩm"] {
-    border-bottom: 1px dashed #f1f5f9 !important;
-    border-right: 1px solid #f1f5f9 !important;
-    padding-bottom: 1.25rem !important;
     order: 2 !important;
+    padding: 0.5rem 1.25rem 1rem 1.25rem !important;
+    border-bottom: 1px dashed #f1f5f9 !important;
+    border-right: none !important;
+  }
+
+  .acc-table-detail tbody td[data-label="Đơn giá"] {
+    order: 3 !important;
+    padding: 1rem 1.25rem !important;
+    border-bottom: 1px dashed #f1f5f9 !important;
   }
 
   .acc-table-detail tbody td[data-label="Danh mục"]::before {
@@ -1064,22 +1066,16 @@
   }
 
   /* Stats Duo (Shared Row) */
-  .acc-table-detail tbody td[data-label="Số lượng"],
-  .acc-table-detail tbody td[data-label="Đơn giá"],
-  .acc-table-detail tbody td[data-label="Thao tác"] {
-    grid-column: span 1;
+  .acc-table-detail tbody td[data-label="Số lượng"] {
+    grid-column: span 1 !important;
     background: #fdfdfd;
     display: flex !important;
     flex-direction: column !important;
     gap: 4px;
     padding: 1rem 1.25rem !important;
-  }
-
-  .acc-table-detail tbody td[data-label="Số lượng"] {
-    border-right: 1px solid #f1f5f9 !important;
-    border-bottom: 1px dashed #f1f5f9 !important;
-    order: 2 !important;
-    grid-column: span 1;
+    border-right: 1px dashed #f1f5f9 !important;
+    border-bottom: none !important; /* Removed to merge visually with Thao Tác */
+    order: 4 !important;
   }
 
   .acc-table-detail tbody td[data-label="Số lượng"]::before,
@@ -1090,6 +1086,7 @@
     font-weight: 800;
     color: #2b3437;
     text-transform: uppercase;
+    white-space: nowrap !important;
   }
 
   .acc-table-detail tbody td[data-label="Số lượng"],
@@ -1129,16 +1126,20 @@
 
   /* Delete button repositioning for Mobile - Same row as Quantity */
   .acc-table-detail tbody td[data-label="Thao tác"] {
+    grid-column: span 1 !important;
     order: 4 !important;
+    display: flex !important;
+    flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
+    background: #fdfdfd !important;
+    padding: 1rem 1.25rem !important;
     border-top: none !important;
+    border-bottom: none !important;
     position: relative !important;
+    width: auto !important;
     top: auto !important;
     right: auto !important;
-    width: 100% !important;
-    padding: 1rem 1.25rem !important;
-    background: #fdfdfd !important;
   }
 
   .acc-table-detail tbody td[data-label="Thao tác"]::before {
@@ -1148,6 +1149,11 @@
     font-weight: 800;
     color: #2b3437;
     text-transform: uppercase;
+    white-space: nowrap !important;
+    letter-spacing: 0 !important;
+    text-align: center !important;
+    width: 100% !important;
+    margin-bottom: 8px !important;
   }
 
   /* High-fidelity Selection State for Mobile Cards */

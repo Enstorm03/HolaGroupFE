@@ -22,8 +22,8 @@ const DailyActivityGrid = ({ loading, apiData, dateFilter, onSelectDay, selected
   }, [month, year, totalDays, apiData]);
 
   const formatCurrency = (val) => {
-    if (val === undefined || val === null) return '0 VNĐ';
-    return val.toLocaleString('vi-VN') + ' VNĐ';
+    if (val === undefined || val === null) return '0 VND';
+    return val.toLocaleString('vi-VN') + ' VND';
   };
 
   if (loading) {
@@ -112,8 +112,16 @@ const DailyActivityGrid = ({ loading, apiData, dateFilter, onSelectDay, selected
                             <span className="text-[12px] font-black text-rose-500">-{formatCurrency(hoveredDay.debt)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Số hóa đơn</span>
-                            <span className="text-[12px] font-black text-blue-500">{hoveredDay.invoiceCount || 0} hóa đơn</span>
+                            <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Hóa đơn (List)</span>
+                            <span className="text-[12px] font-black text-blue-500">{hoveredDay.invoiceCount || 0}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Phiếu thu (Voucher)</span>
+                            <span className="text-[12px] font-black text-amber-500">{hoveredDay.paymentCount || 0}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Báo cáo (Report)</span>
+                            <span className="text-[12px] font-black text-purple-500">{hoveredDay.reportCount || 0}</span>
                         </div>
                         <div className="flex justify-between items-center pt-2.5 border-t border-slate-100">
                             <span className="text-[11px] text-acc-text-main font-black uppercase tracking-wider">Thực thu</span>

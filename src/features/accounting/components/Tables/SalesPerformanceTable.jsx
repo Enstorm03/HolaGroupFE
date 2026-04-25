@@ -54,7 +54,7 @@ const SalesPerformanceTable = ({ data, loading }) => {
                     style={{ padding: 'clamp(0.5rem, 1.2vw, 0.75rem) clamp(0.5rem, 1.5vw, 1rem)' }}>
                   <span className="font-black text-acc-text-main" 
                         style={{ fontSize: 'clamp(11px, 1vw, 13px)' }}>
-                    {item.revenue.toLocaleString()} <small className="text-[10px] opacity-40">VNĐ</small>
+                    {item.revenue.toLocaleString()} <small className="text-[10px] opacity-40">VND</small>
                   </span>
                 </td>
                 <td className="bg-white shadow-sm text-center whitespace-nowrap" 
@@ -84,7 +84,7 @@ const SalesPerformanceTable = ({ data, loading }) => {
                     style={{ padding: 'clamp(0.5rem, 1.2vw, 0.75rem) clamp(0.5rem, 1.5vw, 1rem)' }}>
                   <span className="font-black text-acc-primary" 
                         style={{ fontSize: 'clamp(11px, 1vw, 13px)' }}>
-                    {item.commission.toLocaleString()} <small className="text-[10px] opacity-40 uppercase">VNĐ</small>
+                    {item.commission.toLocaleString()} <small className="text-[10px] opacity-40 uppercase">VND</small>
                   </span>
                 </td>
               </tr>
@@ -121,7 +121,7 @@ const SalesPerformanceTable = ({ data, loading }) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-black text-slate-400 uppercase">Doanh thu</span>
-                <span className="text-sm font-black text-acc-text-main tabular-nums">{item.revenue.toLocaleString()} <small className="text-[9px] opacity-40">VNĐ</small></span>
+                <span className="text-sm font-black text-acc-text-main tabular-nums">{item.revenue.toLocaleString()} <small className="text-[9px] opacity-40">VND</small></span>
               </div>
               <div className="flex flex-col gap-1 items-end">
                 <span className="text-[10px] font-black text-slate-400 uppercase">Đơn hàng</span>

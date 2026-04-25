@@ -336,7 +336,7 @@ const TransactionDetail = () => {
                                                    <span className="text-sm font-black text-acc-text-main block">{item.name}</span>
                                                    <span className="text-[10px] text-acc-text-light font-bold">Mã số: {item.id}</span>
                                                 </td>
-                                                <td className="px-6 py-5 text-right text-sm font-black text-acc-text-main tabular-nums">{item.amount} <span className="text-[9px] opacity-40">VNĐ</span></td>
+                                                <td className="px-6 py-5 text-right text-sm font-black text-acc-text-main tabular-nums">{item.amount} <span className="text-[9px] opacity-40">VND</span></td>
                                                 <td className="px-6 py-5 text-right">
                                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black border uppercase ${item.status === 'high' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                                                       Trễ {item.days} Ngày
@@ -361,7 +361,7 @@ const TransactionDetail = () => {
                                        <span className="text-[8px] font-black text-acc-text-muted uppercase tracking-[0.2em] opacity-60">{item.label}</span>
                                        <div className="flex items-end justify-between">
                                           <span className="text-xl font-black text-acc-text-main tabular-nums leading-none tracking-tight">
-                                             {item.value} <span className="text-[10px] font-normal opacity-30">VNĐ</span>
+                                             {item.value} <span className="text-[10px] font-normal opacity-30">VND</span>
                                           </span>
                                           <span className={`w-2.5 h-2.5 rounded-full ring-4 ring-white shadow-sm ${item.status === 'approved' ? 'bg-emerald-500' : 'bg-amber-400'}`}></span>
                                        </div>
@@ -380,7 +380,7 @@ const TransactionDetail = () => {
                                           <div key={idx} className="space-y-2">
                                              <div className="flex justify-between text-[11px] font-black uppercase">
                                                 <span className="text-acc-text-light">{item.label}</span>
-                                                <span className="text-acc-text-main">{item.value} VNĐ</span>
+                                                <span className="text-acc-text-main">{item.value} VND</span>
                                              </div>
                                              <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100 p-0.5 shadow-inner">
                                                 <div className="h-full bg-acc-primary rounded-full transition-[width] duration-1000" style={{ width: `${85 - (idx * 12)}%` }}></div>
@@ -430,7 +430,7 @@ const TransactionDetail = () => {
                                        <span className="text-[9px] font-black text-acc-text-light uppercase tracking-[0.4em]">Tổng tiền quyết toán</span>
                                        <h2 className="text-3xl sm:text-4xl font-black text-acc-text-main tracking-tighter tabular-nums leading-none">
                                           {extendedData.data?.amount || extendedData.data?.value}
-                                          <span className="text-lg font-normal text-acc-text-light ml-2 opacity-40">VNĐ</span>
+                                          <span className="text-lg font-normal text-acc-text-light ml-2 opacity-40">VND</span>
                                        </h2>
                                     </div>
                                  </div>

@@ -18,7 +18,14 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
       sortableItems.sort((a, b) => {
         let aValue, bValue;
 
-        if (sortConfig.key === 'value') {
+        // Xử lý đặc biệt cho các trường ID để sort theo số
+        if (sortConfig.key === 'displayID') {
+          aValue = Number(a.invoiceID) || 0;
+          bValue = Number(b.invoiceID) || 0;
+        } else if (sortConfig.key === 'displayOrderID') {
+          aValue = Number(a.orderID) || 0;
+          bValue = Number(b.orderID) || 0;
+        } else if (sortConfig.key === 'value') {
           const aRemaining = (a.totalAmount || 0) - (a.paidAmount || 0);
           const bRemaining = (b.totalAmount || 0) - (b.paidAmount || 0);
           aValue = isCompleted ? (a.totalAmount || 0) : aRemaining;
@@ -26,6 +33,12 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
         } else {
           aValue = a[sortConfig.key] || '';
           bValue = b[sortConfig.key] || '';
+        }
+
+        // Nếu là string thì dùng natural sort (hỗ trợ số trong chuỗi)
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          const comparison = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
+          return sortConfig.direction === 'asc' ? comparison : -comparison;
         }
 
         if (aValue < bValue) {
@@ -135,7 +148,7 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
                     </div>
                   </td>
                   <td className="px-8 py-5 text-left tabular-nums whitespace-nowrap" data-label="Giá trị">
-                    <span className="text-sm font-black tracking-tighter m-0">{(displayValue || 0).toLocaleString('vi-VN')} <small className="text-[10px] opacity-70 font-bold">VNĐ</small></span>
+                    <span className="text-sm font-black tracking-tighter m-0">{(displayValue || 0).toLocaleString('vi-VN')} <small className="text-[10px] opacity-70 font-bold">VND</small></span>
                   </td>
                   <td className="px-8 py-5 text-center" data-label="Trạng thái">
                     <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm transition-colors whitespace-nowrap ${

@@ -10,7 +10,7 @@ const CustomTooltip = ({ active, payload }) => {
       <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-100 p-3 animate-in fade-in zoom-in duration-200">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{data.name}</p>
         <p className="text-sm font-black text-acc-text-main">
-          {data.value.toLocaleString()} <small className="text-[10px] opacity-50">VNĐ</small>
+          {data.value.toLocaleString()} <small className="text-[10px] opacity-50">VND</small>
         </p>
       </div>
     );
