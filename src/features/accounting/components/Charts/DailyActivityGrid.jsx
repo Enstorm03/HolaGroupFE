@@ -22,8 +22,8 @@ const DailyActivityGrid = ({ loading, apiData, dateFilter, onSelectDay, selected
   }, [month, year, totalDays, apiData]);
 
   const formatCurrency = (val) => {
-    if (val === undefined || val === null) return '0 VNĐ';
-    return val.toLocaleString('vi-VN') + ' VNĐ';
+    if (val === undefined || val === null) return '0 VND';
+    return val.toLocaleString('vi-VN') + ' VND';
   };
 
   if (loading) {

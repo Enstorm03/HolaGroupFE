@@ -14,14 +14,16 @@ const PrintableAccountingReportTemplate = ({
   if (!performanceData) return null;
 
   const formatCurrency = (val) => {
-    return (val || 0).toLocaleString('vi-VN') + ' VNĐ';
+    return (val || 0).toLocaleString('vi-VN') + ' VND';
   };
 
   return (
     <div 
       id="printable-accounting-report" 
       style={{ 
-        display: 'none', 
+        position: 'fixed',
+        top: '-9999px',
+        left: '-9999px',
         width: '100%',
         backgroundColor: '#FFFFFF',
         color: '#0f172a',
@@ -36,34 +38,51 @@ const PrintableAccountingReportTemplate = ({
           #printable-accounting-report { display: none; }
 
           @media print {
-            @page { 
-              margin: 5mm; 
-            }
-            html {
-              counter-reset: page 0;
+            /* @page margin boxes: đây là cách duy nhất để số trang hiển thị
+               chính xác trên từng trang - browser tự quản lý counter(page) */
+            @page {
+              size: auto;
+              margin: 5mm 5mm 18mm 5mm;
+              @bottom-left {
+                content: "Hệ thống HOLAGROUP ERP - Tài liệu lưu hành nội bộ";
+                font-size: 8pt;
+                color: #94a3b8;
+                font-weight: 700;
+                font-family: 'Inter', 'Segoe UI', sans-serif;
+                border-top: 2px solid #00288E;
+                padding-top: 4pt;
+                vertical-align: top;
+              }
+              @bottom-right {
+                content: "Trang " counter(page);
+                font-size: 8pt;
+                color: #94a3b8;
+                font-weight: 700;
+                font-family: 'Inter', 'Segoe UI', sans-serif;
+                border-top: 2px solid #00288E;
+                padding-top: 4pt;
+                vertical-align: top;
+              }
             }
             body { 
               margin: 0; 
+              background: white !important; 
             }
+            #root, .acc-modal-overlay { display: none !important; }
+            body > *:not(#printable-accounting-report) { display: none !important; }
+
             #printable-accounting-report { 
+              position: relative !important; 
+              left: 0 !important; 
+              top: 0 !important; 
+              width: 100% !important; 
+              display: block !important;
               padding: 0 !important;
-              width: 100% !important;
-              max-width: none !important;
+              margin: 0 !important;
+              z-index: 999999 !important;
             }
             .print-thead-spacer {
               height: 10mm;
-              counter-increment: page;
-            }
-            .print-footer {
-              position: fixed;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              height: 20mm;
-              background: white;
-              padding: 0 10mm 2mm 10mm;
-              box-sizing: border-box;
-              z-index: 9999;
             }
             .print-content-table {
               width: 100%;
@@ -71,12 +90,6 @@ const PrintableAccountingReportTemplate = ({
             }
             .print-main-content {
               padding: 5mm 10mm 5mm 10mm;
-            }
-            .footer-spacer {
-              height: 20mm;
-            }
-            .page-number::after {
-              content: "Trang " counter(page);
             }
             /* TRÁNH NGẮT TRANG GIỮA TIÊU ĐỀ VÀ NỘI DUNG */
             h2, h3, .section-title {
@@ -101,7 +114,7 @@ const PrintableAccountingReportTemplate = ({
         </thead>
         <tbody>
           <tr>
-            <td className="print-main-content">
+            <td className="print-main-content" style={{ verticalAlign: 'top' }}>
               {/* OFFSET FIRST PAGE TOP MARGIN */}
               <div style={{ marginTop: '-10mm' }}>
                 {/* 1. HEADER CHUẨN DOANH NGHIỆP */}
@@ -139,7 +152,7 @@ const PrintableAccountingReportTemplate = ({
               <div className="print-section">
                 <h3 style={{ fontSize: '11px', fontWeight: '900', color: '#0f172a', marginBottom: '10px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ width: '3px', height: '12px', backgroundColor: '#00288E', display: 'inline-block' }}></span>
-                  Tổng hợp biến động doanh thu & công nợ theo thời gian
+                   {timeframeText.toLowerCase().includes('ngày') ? 'Chi tiết biến động doanh thu & công nợ theo giờ' : 'Tổng hợp biến động doanh thu & công nợ theo thời gian'}
                 </h3>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
                   <thead>
@@ -278,22 +291,34 @@ const PrintableAccountingReportTemplate = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {performanceData
-                      .filter(p => p.revenue > 0)
-                      .map((p, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '12px 10px', fontWeight: '800' }}>{p.name.toUpperCase()}</td>
-                          <td style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold' }}>{formatCurrency(p.revenue)}</td>
-                          <td style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 'bold' }}>{p.orderCount}</td>
-                          <td style={{ padding: '12px 10px', fontSize: '9px' }}>{(p.revenue || 0).toLocaleString()} / {formatCurrency(p.target)}</td>
-                          <td style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 'bold' }}>{p.achievement.toFixed(1)}%</td>
-                          <td style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold' }}>{formatCurrency(p.commission)}</td>
-                        </tr>
-                      ))}
+                    {performanceData.filter(p => p.revenue > 0).length > 0 ? (
+                      performanceData
+                        .filter(p => p.revenue > 0)
+                        .map((p, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '12px 10px', fontWeight: '800' }}>{p.name.toUpperCase()}</td>
+                            <td style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatCurrency(p.revenue)}</td>
+                            <td style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 'bold' }}>{p.orderCount}</td>
+                            <td style={{ padding: '12px 10px', fontSize: '9px', whiteSpace: 'nowrap' }}>{(p.revenue || 0).toLocaleString()} / {formatCurrency(p.target)}</td>
+                            <td style={{ padding: '12px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{p.achievement.toFixed(1)}%</td>
+                            <td style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatCurrency(p.commission)}</td>
+                          </tr>
+                        ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
+                          Không có dữ liệu nhân viên kinh doanh phát sinh doanh thu trong ngày.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
-
+            </div>
+          </td>
+        </tr>
+          <tr style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+            <td>
               {/* 6. SIGNATURE SECTION */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '50px', gap: '80px', textAlign: 'center' }}>
                 <div style={{ minWidth: '150px' }}>
@@ -306,26 +331,10 @@ const PrintableAccountingReportTemplate = ({
                   <p style={{ margin: '5px 0 60px 0', fontSize: '9px', fontStyle: 'italic', color: '#64748b' }}>(Ký và đóng dấu)</p>
                 </div>
               </div>
-              </div>
             </td>
           </tr>
         </tbody>
-        <tfoot>
-          <tr>
-            <td>
-              <div className="footer-spacer"></div>
-            </td>
-          </tr>
-        </tfoot>
       </table>
-
-      {/* 7. FOOTER FIXED - ĐỒNG BỘ STYLE DASHBOARD */}
-      <div className="print-footer">
-        <div style={{ borderTop: '2px solid #00288E', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>
-          <span>Hệ thống HOLAGROUP ERP - Tài liệu lưu hành nội bộ</span>
-          <span className="page-number"></span>
-        </div>
-      </div>
     </div>
   );
 };

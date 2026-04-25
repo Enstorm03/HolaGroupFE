@@ -676,8 +676,8 @@ const mockDebtReport = () => {
   return {
     data: debtItems,
     summary: {
-      totalDebt: totalDebtVal.toLocaleString('vi-VN') + " VNĐ",
-      overdueDebt: overdueDebtVal.toLocaleString('vi-VN') + " VNĐ",
+      totalDebt: totalDebtVal.toLocaleString('vi-VN') + " VND",
+      overdueDebt: overdueDebtVal.toLocaleString('vi-VN') + " VND",
       customerCount: uniqueCustomers.toString()
     }
   };
@@ -837,48 +837,82 @@ const computeChartData = (timeframe, invoices, payments, options = {}) => {
       });
     }
   } else if (timeframe === 'daily') {
-    // Legacy support for DailyActivityGrid if needed via index.jsx options
     const [fy, fm] = (options.filterDate || "").split('-').map(Number);
     const y = fy || now.getFullYear();
     const m = fm || (now.getMonth() + 1);
-    const daysInMonth = new Date(y, m, 0).getDate();
-    
-    for (let day = 1; day <= daysInMonth; day++) {
-      const matchesDate = (dateStr) => {
-        const pd = parseDate(dateStr);
-        return pd && pd.d === day && pd.m === m && pd.y === y;
-      };
 
-      const matches = invoices.filter(inv => matchesDate(inv.invoiceDate || inv.createAt || inv.createdAt));
-      const revenue = matches.reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
-      
-      const dayPayments = payments.filter(p => matchesDate(p.paymentDate || p.createAt || p.createdAt));
-      const collected = dayPayments.reduce((sum, p) => sum + safeNumber(p.amount), 0);
-      
-      const dayReports = (dbData.quarterly_reports || []).filter(r => matchesDate(r.createdAt));
-      
-      let endOfDay = new Date(y, m - 1, day, 23, 59, 59);
-      if (day === now.getDate() && m === (now.getMonth() + 1) && y === now.getFullYear()) endOfDay = now;
-      
-      const debt = getDebtAtSnapshot(endOfDay);
-      const actual = revenue - debt;
-      
-      const rawIntensity = revenue / 50000000;
-      const intensity = revenue > 0 ? Math.min(1, Math.pow(rawIntensity, 0.5) * 0.8 + 0.2) : 0; 
-      
-      data.push({ 
-        day, 
-        label: `${day}/${m}`, 
-        revenue, 
-        collected, 
-        expense: debt, 
-        debt,          
-        actual,
-        intensity,
-        invoiceCount: matches.length,
-        paymentCount: dayPayments.length,
-        reportCount: dayReports.length
-      });
+    if (options.selectedDay) {
+      // BÁO CÁO THEO GIỜ TRONG NGÀY ĐÃ CHỌN
+      const day = Number(options.selectedDay);
+      for (let hour = 0; hour < 24; hour += 2) { // Nhóm 2 giờ 1 lần cho gọn
+        const hRange = `${String(hour).padStart(2, '0')}:00 - ${String(hour + 2).padStart(2, '0')}:00`;
+        
+        const matchesDateAndHour = (dateStr) => {
+          const pd = parseDate(dateStr);
+          if (!pd || pd.d !== day || pd.m !== m || pd.y !== y) return false;
+          const d = new Date(dateStr);
+          const h = d.getHours();
+          return h >= hour && h < hour + 2;
+        };
+
+        const matches = invoices.filter(inv => matchesDateAndHour(inv.invoiceDate || inv.createAt || inv.createdAt));
+        const revenue = matches.reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
+        const collected = payments.filter(p => matchesDateAndHour(p.paymentDate || p.createAt || p.createdAt)).reduce((sum, p) => sum + safeNumber(p.amount), 0);
+        
+        // Debt tại snapshot cuối mỗi khung giờ (giả lập)
+        const snapshotDate = new Date(y, m - 1, day, hour + 1, 59, 59);
+        const debt = getDebtAtSnapshot(snapshotDate);
+
+        data.push({
+          label: hRange,
+          revenue,
+          collected,
+          expense: debt,
+          debt,
+          actual: revenue - debt,
+          invoiceCount: matches.length
+        });
+      }
+    } else {
+      // BÁO CÁO THEO NGÀY TRONG THÁNG (Biểu đồ nhiệt)
+      const daysInMonth = new Date(y, m, 0).getDate();
+      for (let day = 1; day <= daysInMonth; day++) {
+        const matchesDate = (dateStr) => {
+          const pd = parseDate(dateStr);
+          return pd && pd.d === day && pd.m === m && pd.y === y;
+        };
+
+        const matches = invoices.filter(inv => matchesDate(inv.invoiceDate || inv.createAt || inv.createdAt));
+        const revenue = matches.reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
+        
+        const dayPayments = payments.filter(p => matchesDate(p.paymentDate || p.createAt || p.createdAt));
+        const collected = dayPayments.reduce((sum, p) => sum + safeNumber(p.amount), 0);
+        
+        const dayReports = (dbData.quarterly_reports || []).filter(r => matchesDate(r.createdAt));
+        
+        let endOfDay = new Date(y, m - 1, day, 23, 59, 59);
+        if (day === now.getDate() && m === (now.getMonth() + 1) && y === now.getFullYear()) endOfDay = now;
+        
+        const debt = getDebtAtSnapshot(endOfDay);
+        const actual = revenue - debt;
+        
+        const rawIntensity = revenue / 50000000;
+        const intensity = revenue > 0 ? Math.min(1, Math.pow(rawIntensity, 0.5) * 0.8 + 0.2) : 0; 
+        
+        data.push({ 
+          day, 
+          label: `${day}/${m}`, 
+          revenue, 
+          collected, 
+          expense: debt, 
+          debt,          
+          actual,
+          intensity,
+          invoiceCount: matches.length,
+          paymentCount: dayPayments.length,
+          reportCount: dayReports.length
+        });
+      }
     }
   }
   return data;
@@ -948,7 +982,11 @@ const accountingService = {
         }
         if (timeframe === 'daily') {
           const [y, m] = (options.filterDate || "").split('-').map(Number);
-          return pd.y === y && pd.m === m;
+          const baseMatch = pd.y === y && pd.m === m;
+          if (options.selectedDay && baseMatch) {
+            return pd.d === Number(options.selectedDay);
+          }
+          return baseMatch;
         }
         return true;
       });
@@ -1011,7 +1049,11 @@ const accountingService = {
           return target.getUTCFullYear() === y && weekNo === w;
         } else if (timeframe === 'daily') {
           const [y, m] = (options.filterDate || "").split('-').map(Number);
-          return pd.y === y && pd.m === m;
+          const baseMatch = pd.y === y && pd.m === m;
+          if (options.selectedDay && baseMatch) {
+            return pd.d === Number(options.selectedDay);
+          }
+          return baseMatch;
         }
         return true;
       });

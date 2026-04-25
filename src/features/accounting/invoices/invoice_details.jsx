@@ -138,17 +138,23 @@ const InvoiceDetail = () => {
                         <td className="px-6 py-5" data-label="Danh mục">
                           <div className="flex flex-col">
                             <span className="text-[10px] text-acc-primary font-black uppercase tracking-widest mb-0.5 whitespace-nowrap block w-fit max-w-[150px] truncate">
-                             {item.categoryName || dbData.categories?.find(c => c.categoryID === item.categoryID)?.categoryName || 'Sản phẩm'}
+                             {item.categoryName || dbData.categories?.find(c => c.categoryID == item.categoryID)?.categoryName || 'Danh mục'}
                             </span>
-                            <p className="text-sm font-black text-acc-text-main leading-tight italic truncate max-w-[400px]" title={item.name}>{item.name}</p>
-                            <p className="text-[9px] text-slate-300 font-bold uppercase tracking-wider mt-1 whitespace-nowrap">Mã: {item.id || i + 1}</p>
                           </div>
+                        </td>
+                        <td className="px-4 py-5" data-label="Sản phẩm">
+                           <div className="flex flex-col">
+                              <p className="text-sm font-black text-acc-text-main leading-tight italic truncate max-w-[400px]" title={item.name || item.productName}>
+                                {item.name || item.productName || dbData.products?.find(p => p.productID == item.productID)?.productName || 'Sản phẩm không xác định'}
+                              </p>
+                              <p className="text-[9px] text-slate-300 font-bold uppercase tracking-wider mt-1 whitespace-nowrap">Mã: {item.productID || item.id || i + 1}</p>
+                           </div>
                         </td>
                         <td className="px-4 py-5 text-left tabular-nums" data-label="Số lượng">
                           <span className="text-sm font-black text-acc-text-main">{item.quantity}</span>
                         </td>
                         <td className="px-6 py-5 text-left text-sm font-black text-acc-primary tabular-nums" data-label="Thành tiền">
-                          {(item.quantity * item.price)?.toLocaleString()} VNĐ
+                          {(item.quantity * item.price)?.toLocaleString()} VND
                         </td>
                       </tr>
                     ))}
@@ -161,16 +167,16 @@ const InvoiceDetail = () => {
                <div className="flex flex-col items-end gap-3">
                   <div className="flex justify-between w-full sm:w-72">
                     <span className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Tạm tính:</span>
-                    <span className="text-sm font-black text-acc-text-main tabular-nums">{subtotal.toLocaleString()} VNĐ</span>
+                    <span className="text-sm font-black text-acc-text-main tabular-nums">{subtotal.toLocaleString()} VND</span>
                   </div>
                   <div className="flex justify-between w-full sm:w-72">
                     <span className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Thuế VAT (10%):</span>
-                    <span className="text-sm font-black text-acc-text-main tabular-nums">{tax.toLocaleString()} VNĐ</span>
+                    <span className="text-sm font-black text-acc-text-main tabular-nums">{tax.toLocaleString()} VND</span>
                   </div>
                   <div className="w-full sm:w-80 h-px bg-slate-200 my-1"></div>
                   <div className="flex justify-between w-full sm:w-80 text-acc-primary">
                     <span className="text-sm font-black uppercase tracking-tight">Tổng cộng:</span>
-                    <span className="text-xl font-black tabular-nums">{(invoice.totalAmount || finalTotal).toLocaleString()} VNĐ</span>
+                    <span className="text-xl font-black tabular-nums">{(invoice.totalAmount || finalTotal).toLocaleString()} VND</span>
                   </div>
                </div>
             </div>
@@ -188,12 +194,12 @@ const InvoiceDetail = () => {
              <div className="relative z-10 space-y-4">
                 <div className="space-y-1">
                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Dư nợ cần thu</p>
-                   <h3 className="text-3xl font-black tabular-nums scale-y-110 origin-left tracking-tight">{remaining.toLocaleString()} VNĐ</h3>
+                   <h3 className="text-3xl font-black tabular-nums scale-y-110 origin-left tracking-tight">{remaining.toLocaleString()} VND</h3>
                 </div>
                 <div className="flex flex-col gap-2">
                    <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 border border-white/5">
                       <span className="material-symbols-outlined text-sm">check_circle</span>
-                      <span className="text-[10px] font-black uppercase tracking-wider">Đã thu: {paid.toLocaleString()} VNĐ</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider">Đã thu: {paid.toLocaleString()} VND</span>
                    </div>
                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                       <div className="h-full bg-emerald-400 rounded-full transition-all duration-1000" style={{ width: `${percent}%` }}></div>
@@ -211,7 +217,7 @@ const InvoiceDetail = () => {
              
              <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Số tiền nhận (VNĐ)</label>
+                  <label className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Số tiền nhận (VND)</label>
                   <div className="relative">
                     <input 
                       type="text" 

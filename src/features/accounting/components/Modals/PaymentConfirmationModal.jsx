@@ -113,7 +113,7 @@ const PaymentConfirmationModal = ({ isOpen, onClose, invoice, onConfirm, loading
                     onChange={(e) => setNextPaymentDate(e.target.value)}
                     className="w-full bg-red-50/50 border-2 border-red-100 focus:border-acc-error focus:ring-4 focus:ring-acc-error/10 focus:bg-white rounded-2xl px-5 py-3 text-body-sm text-acc-error font-bold transition-all outline-none"
                   />
-                  <p className="text-[10px] text-red-400 font-medium italic">* Khách hàng còn nợ {remainingAfter.toLocaleString('vi-VN')} VNĐ</p>
+                  <p className="text-[10px] text-red-400 font-medium italic">* Khách hàng còn nợ {remainingAfter.toLocaleString('vi-VN')} VND</p>
                 </div>
               )}
 
@@ -160,17 +160,17 @@ const PaymentConfirmationModal = ({ isOpen, onClose, invoice, onConfirm, loading
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-body-sm">
                     <span className="text-acc-text-muted">Tổng nợ hiện tại:</span>
-                    <span className="font-bold text-acc-text-main">{remainingBefore.toLocaleString('vi-VN')} VNĐ</span>
+                    <span className="font-bold text-acc-text-main">{remainingBefore.toLocaleString('vi-VN')} VND</span>
                   </div>
                   <div className="flex justify-between items-center text-body-sm">
                     <span className="text-acc-text-muted">Số tiền thu mới:</span>
-                    <span className="font-bold text-acc-primary">-{parseFloat(amount || 0).toLocaleString('vi-VN')} VNĐ</span>
+                    <span className="font-bold text-acc-primary">-{parseFloat(amount || 0).toLocaleString('vi-VN')} VND</span>
                   </div>
                   <div className="pt-4 border-t border-dashed border-slate-300">
                     <div className="flex justify-between items-center">
                       <span className="text-label-xs text-acc-text-light uppercase">Nợ còn lại:</span>
                       <span className={`text-heading-sm font-black ${remainingAfter === 0 ? 'text-green-600' : 'text-acc-error'}`}>
-                        {remainingAfter.toLocaleString('vi-VN')} VNĐ
+                        {remainingAfter.toLocaleString('vi-VN')} VND
                       </span>
                     </div>
                   </div>

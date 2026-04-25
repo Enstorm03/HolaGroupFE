@@ -120,7 +120,7 @@ const DebtTable = ({ debts, loading, onReminder, onToggleAuto, isMasterAutoEnabl
 
                   <td className="px-8 py-5 text-right tabular-nums whitespace-nowrap" data-label="SỐ TIỀN CÒN NỢ">
                     <span className="text-sm font-black text-acc-primary m-0">
-                      {item.remainingAmount?.toLocaleString('vi-VN')} <small className="text-[10px] opacity-70 font-bold">VNĐ</small>
+                      {item.remainingAmount?.toLocaleString('vi-VN')} <small className="text-[10px] opacity-70 font-bold">VND</small>
                     </span>
                   </td>
 

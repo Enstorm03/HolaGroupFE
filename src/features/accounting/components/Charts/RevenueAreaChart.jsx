@@ -39,7 +39,7 @@ const CustomTooltip = ({ active, payload, label }) => {
               {renderTrend(data.revenue, data.prevRevenue)}
             </div>
             <span className="text-sm font-black text-acc-text-main pl-3">
-              {(data.revenue || 0).toLocaleString()} <small className="text-[10px] opacity-50">VNĐ</small>
+              {(data.revenue || 0).toLocaleString()} <small className="text-[10px] opacity-50">VND</small>
             </span>
           </div>
 
@@ -52,7 +52,7 @@ const CustomTooltip = ({ active, payload, label }) => {
               {renderTrend(data.expense, data.prevExpense)}
             </div>
             <span className="text-sm font-black text-amber-600 pl-3">
-              {(data.expense || 0).toLocaleString()} <small className="text-[10px] opacity-50">VNĐ</small>
+              {(data.expense || 0).toLocaleString()} <small className="text-[10px] opacity-50">VND</small>
             </span>
           </div>
 
@@ -64,7 +64,7 @@ const CustomTooltip = ({ active, payload, label }) => {
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black text-acc-primary uppercase">Thực thu:</span>
               <span className="text-sm font-black text-acc-primary">
-                {(data.collected || 0).toLocaleString()} <small className="text-[10px] opacity-50">VNĐ</small>
+                {(data.collected || 0).toLocaleString()} <small className="text-[10px] opacity-50">VND</small>
               </span>
             </div>
           </div>

@@ -108,9 +108,10 @@ const AccountingDashboard = () => {
 
   useEffect(() => {
     setChartData([]);
-    const options = { filterWeek, filterYear, filterYearsCount, filterDate, selectedDay };
-    fetchChart(timeframe, options);
-    fetchStats(timeframe, options);
+    const chartOptions = { filterWeek, filterYear, filterYearsCount, filterDate };
+    const statsOptions = { filterWeek, filterYear, filterYearsCount, filterDate, selectedDay };
+    fetchChart(timeframe, chartOptions);
+    fetchStats(timeframe, statsOptions);
   }, [timeframe, filterWeek, filterYear, filterYearsCount, filterDate, selectedDay]);
 
   const [isExporting, setIsExporting] = useState(false);
@@ -126,7 +127,7 @@ const AccountingDashboard = () => {
         @media print {
           html, body { margin: 0 !important; padding: 0 !important; width: 297mm !important; height: 210mm !important; background: white !important; }
           #root { display: none !important; }
-          #printable-accounting-report { display: block !important; width: 297mm !important; padding: 15mm !important; margin: 0 auto !important; background: white !important; visibility: visible !important; }
+          #printable-dashboard { display: block !important; width: 297mm !important; padding: 15mm !important; margin: 0 auto !important; background: white !important; visibility: visible !important; }
           * { -webkit-print-color-adjust: exact !important; }
           @page { size: landscape; margin: 0; }
         }
@@ -153,9 +154,9 @@ const AccountingDashboard = () => {
   };
 
    const formatCurrency = (val) => {
-    if (val === undefined || val === null) return "0 VNĐ";
-    if (typeof val === 'string') return val.replace(/[đ₫]/g, ' VNĐ');
-    return val.toLocaleString('vi-VN') + ' VNĐ';
+    if (val === undefined || val === null) return "0 VND";
+    if (typeof val === 'string') return val.replace(/[đ₫]/g, ' VND');
+    return val.toLocaleString('vi-VN') + ' VND';
   };
 
   if (loading && !stats) {
@@ -702,6 +703,7 @@ const AccountingDashboard = () => {
       {createPortal(
         <PrintableDashboardTemplate 
           stats={stats} 
+          chartData={chartData}
           timeframeLabels={timeframeLabels} 
           timeframe={timeframe} 
           dynamicLabel={getTimeframeText()} 

@@ -141,7 +141,7 @@ const PaymentHistoryTable = ({ payments, loading, onPrint }) => {
                 </td>
                 <td className="px-8 py-5 text-left tabular-nums whitespace-nowrap" data-label="Số tiền">
                   <span className="text-sm font-black tracking-tighter m-0">
-                    {payment.amount?.toLocaleString('vi-VN')} <small className="text-[10px] opacity-70 font-bold">VNĐ</small>
+                    {payment.amount?.toLocaleString('vi-VN')} <small className="text-[10px] opacity-70 font-bold">VND</small>
                   </span>
                 </td>
                 <td className="px-8 py-5 text-center" data-label="Phương thức">

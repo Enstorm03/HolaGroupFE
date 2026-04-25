@@ -331,7 +331,7 @@ const ProductCategoryLinkedSelect = ({
                       {categories.find(c => c.categoryID === prod.categoryID)?.categoryName || 'Sản phẩm'}
                     </span>
                   </div>
-                  <span className="text-[10px] font-black text-acc-primary tabular-nums">{prod.salePrice.toLocaleString()} VNĐ</span>
+                  <span className="text-[10px] font-black text-acc-primary tabular-nums">{prod.salePrice.toLocaleString()} VND</span>
                 </div>
               </button>
             ))}
@@ -455,11 +455,11 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                     <div className="flex justify-between items-end">
                       <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Đã thu</p>
-                        <p className="text-xl font-black text-emerald-600">{paid.toLocaleString()} VNĐ</p>
+                        <p className="text-xl font-black text-emerald-600">{paid.toLocaleString()} VND</p>
                       </div>
                       <div className="space-y-1 text-right">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Còn nợ</p>
-                        <p className="text-xl font-black text-rose-500">{remaining.toLocaleString()} VNĐ</p>
+                        <p className="text-xl font-black text-rose-500">{remaining.toLocaleString()} VND</p>
                       </div>
                     </div>
                   </div>
@@ -491,16 +491,16 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                           <td className="p-5" data-label="Danh mục">
                             <span className="text-[10px] text-acc-primary font-black uppercase tracking-widest px-2 py-1 bg-acc-primary/5 rounded-lg whitespace-nowrap block w-fit max-w-[150px] truncate">
-                              {item.categoryName || dbData.categories?.find(c => c.categoryID === item.categoryID)?.categoryName || 'Sản phẩm'}
+                              {item.categoryName || dbData.categories?.find(c => c.categoryID == item.categoryID)?.categoryName || 'Sản phẩm'}
                             </span>
                           </td>
                           <td className="p-5 text-sm font-black text-acc-text-main" data-label="Sản phẩm">
-                            <div className="truncate max-w-[200px] md:max-w-[300px] lg:max-w-[400px]" title={item.name}>
-                              {item.name}
+                            <div className="truncate max-w-[200px] md:max-w-[300px] lg:max-w-[400px]" title={item.name || item.productName}>
+                              {item.name || item.productName || dbData.products?.find(p => p.productID == item.productID)?.productName || 'Sản phẩm không xác định'}
                             </div>
                           </td>
                           <td className="p-5 text-left font-bold text-slate-500" data-label="Số lượng">{item.quantity}</td>
-                          <td className="p-5 text-left font-black text-acc-primary tabular-nums" data-label="Thành tiền">{(item.quantity * (item.unitPrice || item.price || 0))?.toLocaleString()} VNĐ</td>
+                          <td className="p-5 text-left font-black text-acc-primary tabular-nums" data-label="Thành tiền">{(item.quantity * (item.unitPrice || item.price || 0))?.toLocaleString()} VND</td>
                         </tr>
                       ))}
                     </tbody>
@@ -516,14 +516,14 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                   </div>
                 </div>
                 <div className="space-y-4 p-8 rounded-[2rem] bg-slate-900 text-white shadow-xl shadow-slate-200">
-                  <div className="flex justify-between items-center text-xs opacity-60 font-medium"><span>Tạm tính</span><span>{subtotal.toLocaleString()} VNĐ</span></div>
+                  <div className="flex justify-between items-center text-xs opacity-60 font-medium"><span>Tạm tính</span><span>{subtotal.toLocaleString()} VND</span></div>
                   {adjustment !== 0 && (
-                    <div className="flex justify-between items-center text-xs opacity-60 font-medium font-italic"><span>Phí & Giảm giá</span><span>{adjustment > 0 ? '+' : ''}{adjustment.toLocaleString()} VNĐ</span></div>
+                    <div className="flex justify-between items-center text-xs opacity-60 font-medium font-italic"><span>Phí & Giảm giá</span><span>{adjustment > 0 ? '+' : ''}{adjustment.toLocaleString()} VND</span></div>
                   )}
                   <div className="h-px bg-white/10 my-2"></div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-black uppercase tracking-widest text-indigo-400">Tổng cộng</span>
-                    <span className="text-2xl font-black tabular-nums tracking-tighter">{finalTotal.toLocaleString()} VNĐ</span>
+                    <span className="text-2xl font-black tabular-nums tracking-tighter">{finalTotal.toLocaleString()} VND</span>
                   </div>
                 </div>
               </div>
@@ -631,7 +631,7 @@ const AdjustmentModal = ({ isOpen, onClose, invoice, onUpdate }) => {
                         placeholder="0"
                         className={`w-full border-2 rounded-[1.5rem] py-4 px-5 text-sm font-black outline-none focus:ring-4 transition-[border-color,background-color,box-shadow,transform] tabular-nums placeholder:text-slate-200 ${item.key === 'discount' ? 'bg-rose-50/30 text-rose-600 border-rose-100/50 focus:bg-white focus:border-rose-200 focus:ring-rose-500/5' : 'bg-slate-50 text-slate-800 border-slate-200/60 focus:bg-white focus:border-acc-primary/20 focus:ring-acc-primary/5'}`}
                       />
-                      <span className={`absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase tracking-tight ${item.key === 'discount' ? 'text-rose-300' : 'text-slate-300'}`}>VNĐ</span>
+                      <span className={`absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase tracking-tight ${item.key === 'discount' ? 'text-rose-300' : 'text-slate-300'}`}>VND</span>
                     </div>
                   </div>
                 ))}
@@ -644,14 +644,14 @@ const AdjustmentModal = ({ isOpen, onClose, invoice, onUpdate }) => {
                 <div className="space-y-4 relative z-10">
                   <div className="flex justify-between items-center px-2">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Giá trị gốc</span>
-                    <span className="text-sm font-black tabular-nums">{invoice.totalAmount?.toLocaleString()} VNĐ</span>
+                    <span className="text-sm font-black tabular-nums">{invoice.totalAmount?.toLocaleString()} VND</span>
                   </div>
                   <div className={`flex justify-between items-center px-4 py-3 rounded-2xl ${totalAdjustment >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-sm">{totalAdjustment >= 0 ? 'trending_up' : 'trending_down'}</span>
                       <span className="text-[10px] font-black uppercase tracking-widest">Biến động {totalAdjustment >= 0 ? 'Cộng' : 'Trừ'}</span>
                     </div>
-                    <span className="text-base font-black tabular-nums">{totalAdjustment >= 0 ? '+' : ''}{totalAdjustment.toLocaleString()} VNĐ</span>
+                    <span className="text-base font-black tabular-nums">{totalAdjustment >= 0 ? '+' : ''}{totalAdjustment.toLocaleString()} VND</span>
                   </div>
                 </div>
               </div>
@@ -676,7 +676,7 @@ const AdjustmentModal = ({ isOpen, onClose, invoice, onUpdate }) => {
           <div className="px-6 sm:px-10 py-5 sm:py-8 border-t border-slate-100 flex flex-row items-center justify-between bg-slate-50/50 backdrop-blur-xl shrink-0 acc-modal-mobile-taskbar">
             <div className="flex flex-col items-start">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Quyết toán mới</span>
-              <span className="text-xl sm:text-3xl font-black text-acc-primary tracking-tighter tabular-nums">{finalTotal.toLocaleString()} VNĐ</span>
+              <span className="text-xl sm:text-3xl font-black text-acc-primary tracking-tighter tabular-nums">{finalTotal.toLocaleString()} VND</span>
             </div>
             <div className="flex items-center gap-3">
               <button onClick={onClose} className="px-6 py-4 sm:py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-200/50 rounded-xl sm:rounded-2xl transition-all active:scale-95">Hủy</button>
@@ -851,8 +851,36 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
       getFullName(c).toLowerCase() === enteredCustomer?.toString().toLowerCase()
     );
 
-    if (!formData.customer || !formData.orderID?.toString().trim()) {
-      if (showToast) showToast("Vui lòng điền đầy đủ thông tin khách hàng và mã đơn hàng", "error");
+    // --- VALIDATION LOGIC ---
+    if (!formData.customer) {
+      if (showToast) showToast("Vui lòng chọn khách hàng", "error");
+      return;
+    }
+    if (!formData.salesperson) {
+      if (showToast) showToast("Vui lòng chọn nhân viên bán hàng", "error");
+      return;
+    }
+    if (!formData.orderID?.toString().trim()) {
+      if (showToast) showToast("Vui lòng nhập mã đơn hàng", "error");
+      return;
+    }
+    if (!formData.date) {
+      if (showToast) showToast("Vui lòng chọn ngày lập hóa đơn", "error");
+      return;
+    }
+    if (!formData.dueDate) {
+      if (showToast) showToast("Vui lòng chọn hạn thanh toán đợt 1", "error");
+      return;
+    }
+    
+    // Validate items
+    if (!formData.items || formData.items.length === 0) {
+      if (showToast) showToast("Vui lòng thêm ít nhất một sản phẩm", "error");
+      return;
+    }
+    const isItemsValid = formData.items.every(it => it.name && it.quantity > 0);
+    if (!isItemsValid) {
+      if (showToast) showToast("Vui lòng hoàn thiện thông tin sản phẩm và số lượng", "error");
       return;
     }
 
@@ -905,9 +933,9 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
           <div className="flex-1 overflow-y-auto p-5 sm:p-8 no-scrollbar acc-modal-scroll-area" style={{ WebkitOverflowScrolling: 'touch' }}>
             <form className="space-y-8" id="invoice-form" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Khách hàng</label><SearchableCustomerSelect onSelect={(val) => setFormData(prev => ({ ...prev, customer: val }))} selectedCustomer={formData.customer} /></div>
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Khách hàng <span className="text-rose-500">*</span></label><SearchableCustomerSelect onSelect={(val) => setFormData(prev => ({ ...prev, customer: val }))} selectedCustomer={formData.customer} /></div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Nhân viên bán hàng</label>
+                  <label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Nhân viên bán hàng <span className="text-rose-500">*</span></label>
                   <select 
                     value={formData.salesperson} 
                     onChange={(e) => setFormData(prev => ({ ...prev, salesperson: e.target.value }))}
@@ -919,12 +947,12 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
                     ))}
                   </select>
                 </div>
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Mã đơn hàng</label><input type="text" value={formData.orderID} onChange={(e) => setFormData(prev => ({ ...prev, orderID: e.target.value }))} autoComplete="off" spellCheck={false} placeholder="Ví dụ: ORD-001" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-acc-primary/30 rounded-2xl py-3 px-5 text-sm font-black focus:ring-4 focus:ring-acc-primary/5 outline-none transition-all focus:bg-white placeholder:text-slate-300" /></div>
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Mã đơn hàng <span className="text-rose-500">*</span></label><input type="text" value={formData.orderID} onChange={(e) => setFormData(prev => ({ ...prev, orderID: e.target.value }))} autoComplete="off" spellCheck={false} placeholder="Ví dụ: ORD-001" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-acc-primary/30 rounded-2xl py-3 px-5 text-sm font-black focus:ring-4 focus:ring-acc-primary/5 outline-none transition-all focus:bg-white placeholder:text-slate-300" /></div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Ngày lập</label><input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-slate-200 focus:border-acc-primary/30 transition-all focus:bg-white" /></div>
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Hạn thanh toán đợt 1</label><input type="date" value={formData.dueDate} min={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-slate-200 focus:border-acc-primary/30 transition-all focus:bg-white" /></div>
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Ngày lập <span className="text-rose-500">*</span></label><input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-slate-200 focus:border-acc-primary/30 transition-all focus:bg-white" /></div>
+                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Hạn thanh toán đợt 1 <span className="text-rose-500">*</span></label><input type="date" value={formData.dueDate} min={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))} className="w-full bg-slate-50 rounded-2xl py-3 px-5 text-sm font-black outline-none border-2 border-slate-200 focus:border-acc-primary/30 transition-all focus:bg-white" /></div>
               </div>
 
               <div className="p-6 sm:p-8 rounded-[2rem] bg-acc-primary/5 border border-acc-primary/10 space-y-6">
@@ -936,7 +964,7 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-acc-text-main uppercase tracking-widest ml-1">Số tiền đã trả trước (VNĐ)</label>
+                    <label className="text-[10px] font-black text-acc-text-main uppercase tracking-widest ml-1">Số tiền đã trả trước (VND)</label>
                     <input type="number" placeholder="Nhập số tiền đã thu..." className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-slate-200 focus:border-acc-primary/40 outline-none text-sm font-black transition-all text-acc-primary shadow-sm" value={formData.paidAmount} onChange={e => setFormData({ ...formData, paidAmount: parseFloat(e.target.value) || 0 })} />
                   </div>
                   <div className="space-y-2">
@@ -949,7 +977,7 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
                 <div className="flex justify-between items-center px-6 py-4 rounded-2xl bg-white/50 border border-acc-primary/10">
                   <div className="flex flex-col">
                     <span className="text-[9px] font-bold text-acc-text-main uppercase tracking-widest">Dư nợ còn lại</span>
-                    <span className="text-base font-black text-acc-primary">{(totalAmount - formData.paidAmount).toLocaleString()} VNĐ</span>
+                    <span className="text-base font-black text-acc-primary">{(totalAmount - formData.paidAmount).toLocaleString()} VND</span>
                   </div>
                   <div className="text-[10px] font-black text-acc-primary uppercase bg-acc-primary/10 px-3 py-1 rounded-lg">
                     {Math.round((formData.paidAmount / totalAmount) * 100) || 0}% Đã thu
@@ -958,7 +986,7 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between"><h3 className="text-xs font-black uppercase text-acc-text-main">Sản phẩm / Dịch vụ</h3><button type="button" onClick={addItem} className="px-4 py-2 rounded-xl bg-acc-primary/5 text-[10px] font-black text-acc-primary uppercase flex items-center gap-1 hover:bg-acc-primary/10 transition-all active:scale-95"><span className="material-symbols-outlined text-sm">add_circle</span> Thêm dòng</button></div>
+                <div className="flex items-center justify-between"><h3 className="text-xs font-black uppercase text-acc-text-main">Sản phẩm / Dịch vụ <span className="text-rose-500">*</span></h3><button type="button" onClick={addItem} className="px-4 py-2 rounded-xl bg-acc-primary/5 text-[10px] font-black text-acc-primary uppercase flex items-center gap-1 hover:bg-acc-primary/10 transition-all active:scale-95"><span className="material-symbols-outlined text-sm">add_circle</span> Thêm dòng</button></div>
                 <div className="rounded-2xl border-2 border-slate-200 bg-white relative">
                   <div className="no-scrollbar">
                     <table className="w-full text-sm acc-responsive-table acc-table-detail">
@@ -990,7 +1018,7 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
                             </td>
                             <td className="p-3 text-left font-black text-acc-primary tabular-nums" data-label="Thành tiền">
                               {(item.quantity * (item.unitPrice || item.price || 0)).toLocaleString()} 
-                              <span className="text-[9px] opacity-40 ml-1">VNĐ</span>
+                              <span className="text-[9px] opacity-40 ml-1">VND</span>
                             </td>
                             <td className="p-3 text-center" data-label="Thao tác">
                               <button 
@@ -1020,7 +1048,7 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
           <div className="px-6 sm:px-8 py-5 sm:py-6 border-t border-slate-100 flex flex-row items-center justify-between bg-slate-50/50 sm:bg-slate-50/50 gap-4 shrink-0 acc-modal-mobile-taskbar">
             <div className="flex flex-col items-start w-full sm:w-auto">
               <span className="text-[9px] font-black text-acc-text-main uppercase tracking-widest">Tổng hóa đơn</span>
-              <span className="text-lg sm:text-2xl font-black text-acc-primary tracking-tighter">{totalAmount.toLocaleString()} VNĐ</span>
+              <span className="text-lg sm:text-2xl font-black text-acc-primary tracking-tighter">{totalAmount.toLocaleString()} VND</span>
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <button onClick={onClose} className="flex-1 sm:flex-none px-6 py-3.5 sm:py-3 text-[10px] font-black uppercase text-slate-500 transition-all hover:bg-slate-200 rounded-xl sm:rounded-2xl border border-slate-200 sm:border-none backdrop-blur-md">Hủy</button>
@@ -1069,17 +1097,89 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = 'warn
 
 const ToastNotification = ({ show, message, type = 'success', onClose }) => {
   useEffect(() => {
-    if (show) { const timer = setTimeout(onClose, 4000); return () => clearTimeout(timer); }
+    if (show) { const timer = setTimeout(onClose, 5000); return () => clearTimeout(timer); }
   }, [show, onClose]);
+  
   if (!show) return null;
-  return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[350] animate-slide-up">
-      <div className={`flex items-center gap-4 px-6 py-4 rounded-[2rem] shadow-2xl border backdrop-blur-xl ${type === 'success' ? 'bg-emerald-50/90 border-emerald-100 text-emerald-700' : 'bg-rose-50/90 border-rose-100 text-rose-700'}`}>
-        <span className="material-symbols-outlined text-2xl">{type === 'success' ? 'check_circle' : 'error'}</span>
-        <span className="text-[11px] font-black uppercase tracking-wider">{message}</span>
-        <button onClick={onClose} className="ml-2 hover:opacity-50 transition-opacity"><span aria-hidden="true" className="material-symbols-outlined text-lg">close</span></button>
+
+  return createPortal(
+    <>
+      <style>{`
+        @keyframes toast-center-in {
+          0% { transform: scale(0.9); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes toast-slide-up {
+          0% { transform: translate(-50%, 20px); opacity: 0; }
+          100% { transform: translate(-50%, 0); opacity: 1; }
+        }
+        .animate-toast-center { animation: toast-center-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .animate-toast-desktop { animation: toast-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      `}</style>
+      
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center p-6 pointer-events-none">
+        {/* Backdrop for mobile */}
+        <div 
+          className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] sm:hidden pointer-events-auto transition-opacity duration-300" 
+          onClick={onClose}
+          style={{ animation: 'fade-in 0.3s ease-out' }}
+        />
+        
+        {/* Main Notification Card */}
+        <div className={`
+          pointer-events-auto
+          flex flex-col sm:flex-row items-center gap-4 sm:gap-5
+          w-full max-w-[320px] sm:w-max sm:max-w-[90vw]
+          p-6 sm:px-8 sm:py-5
+          rounded-[2.5rem] sm:rounded-[2.5rem]
+          shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)]
+          border-2 backdrop-blur-3xl
+          animate-toast-center sm:animate-toast-desktop
+          sm:fixed sm:bottom-12 sm:left-1/2
+          ${type === 'success' 
+            ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800' 
+            : 'bg-rose-50/95 border-rose-200 text-rose-800'}
+        `}>
+          {/* Icon Section */}
+          <div className={`
+            flex-shrink-0 w-16 h-16 sm:w-11 sm:h-11 rounded-full 
+            flex items-center justify-center 
+            ${type === 'success' ? 'bg-emerald-500/10' : 'bg-rose-500/10'}
+          `}>
+            <span className="material-symbols-outlined text-4xl sm:text-2xl">
+              {type === 'success' ? 'check_circle' : 'error'}
+            </span>
+          </div>
+
+          {/* Text Content */}
+          <div className="flex flex-col text-center sm:text-left flex-1 min-w-0">
+            <span className="text-[10px] sm:text-[9px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">
+              {type === 'success' ? 'Hoàn tất giao dịch' : 'Yêu cầu nhập liệu'}
+            </span>
+            <span className="text-[14px] sm:text-[12px] font-black uppercase tracking-tight leading-tight sm:leading-normal">
+              {message}
+            </span>
+          </div>
+
+          {/* Action Button for Mobile */}
+          <button 
+            onClick={onClose}
+            className="w-full sm:hidden mt-4 py-3.5 rounded-2xl bg-white/50 border border-current/10 text-[11px] font-black uppercase tracking-widest active:scale-95 transition-transform"
+          >
+            Đã hiểu
+          </button>
+
+          {/* Close Button for Desktop */}
+          <button 
+            onClick={onClose} 
+            className="hidden sm:flex w-9 h-9 rounded-full hover:bg-black/5 items-center justify-center transition-all hover:rotate-90"
+          >
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
+        </div>
       </div>
-    </div>
+    </>,
+    document.body
   );
 };
 
@@ -1171,8 +1271,15 @@ const InvoiceList = () => {
       `Hành động này sẽ xóa vĩnh viễn hóa đơn ${displayID}. Bạn không thể khôi phục dữ liệu này sau khi thực hiện.`,
       () => {
         setInvoices(prev => prev.filter(inv => inv.invoiceID !== invoiceID));
-        const local = JSON.parse(localStorage.getItem('added_invoices') || '[]');
-        localStorage.setItem('added_invoices', JSON.stringify(local.filter(i => i.invoiceID !== invoiceID)));
+        
+        const localInvoices = JSON.parse(localStorage.getItem('added_invoices') || '[]');
+        localStorage.setItem('added_invoices', JSON.stringify(localInvoices.filter(i => i.invoiceID !== invoiceID)));
+        
+        if (inv && inv.orderID) {
+          const localOrderItems = JSON.parse(localStorage.getItem('added_order_items') || '[]');
+          localStorage.setItem('added_order_items', JSON.stringify(localOrderItems.filter(it => it.orderID !== inv.orderID)));
+        }
+
         showToast(`Đã xóa hóa đơn ${displayID} khỏi hệ thống.`, "success");
       },
       'danger'
@@ -1352,7 +1459,7 @@ const InvoiceList = () => {
                     <td className="px-6 py-4 text-sm font-black tabular-nums" data-label="Giá trị">
                       <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
                         {inv.totalAmount?.toLocaleString()}
-                        <span className="inv-vnd-unit font-black opacity-60">VNĐ</span>
+                        <span className="inv-vnd-unit font-black opacity-60">VND</span>
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center" onClick={e => e.stopPropagation()} data-label="Trạng thái">
@@ -1384,7 +1491,7 @@ const InvoiceList = () => {
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hiển thị {filteredInvoices.length} của {invoices.length} giao dịch</span>
           <div className="flex items-center gap-4 text-xs font-black text-acc-text-main">
             <span className="text-slate-400 uppercase text-[9px] font-black tracking-widest">Tổng cộng:</span>
-            <span className="tabular-nums text-acc-primary text-sm font-black">{filteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0).toLocaleString()} VNĐ</span>
+            <span className="tabular-nums text-acc-primary text-sm font-black">{filteredInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0).toLocaleString()} VND</span>
           </div>
         </div>
       </div>

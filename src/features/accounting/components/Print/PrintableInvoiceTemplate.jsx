@@ -1,5 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import dbData from '../../../../../db.json';
 
 /**
  * ⚠️ Mẫu in TỔNG HỢP KẾ TOÁN PRO-MAX V4.5 (Multi-page Fix)
@@ -44,7 +45,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
                     {item.name} <br/>
                     <small style={{ color: '#94a3b8' }}>Mã: {item.id}</small>
                   </td>
-                  <td style={{ padding: '0.6rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '900' }}>{item.amount?.toLocaleString()} VNĐ</td>
+                  <td style={{ padding: '0.6rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '900', whiteSpace: 'nowrap' }}>{item.amount?.toLocaleString()} VND</td>
                   <td style={{ padding: '0.6rem', textAlign: 'right', fontSize: '0.7rem', fontWeight: '700', color: '#e11d48' }}>Trễ {item.days} Ngày</td>
                 </tr>
               ))}
@@ -56,7 +57,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
         return (
           <div style={{ padding: '2rem', border: '2px solid #f1f5f9', borderRadius: '1.5rem', textAlign: 'center', backgroundColor: '#fcfcfc' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.2em' }}>TỔNG TIỀN QUYẾT TOÁN</p>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: '900', color: '#00288E', margin: '1rem 0' }}>{extendedData.data?.amount || extendedData.data?.value} đ</h2>
+            <h2 style={{ fontSize: '2.5rem', fontWeight: '900', color: '#00288E', margin: '1rem 0', whiteSpace: 'nowrap' }}>{extendedData.data?.amount || extendedData.data?.value} VND</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem', textAlign: 'left' }}>
               <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '0.6rem', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase' }}>Đơn vị thụ hưởng</span>
@@ -77,7 +78,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
                 {extendedData.data?.summary?.map((item, idx) => (
                   <div key={idx} style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '1rem' }}>
                     <span style={{ fontSize: '0.6rem', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase' }}>{item.label}</span>
-                    <p style={{ margin: '0.5rem 0 0 0', fontWeight: '900', fontSize: '1rem', color: '#00288E' }}>{item.value} đ</p>
+                    <p style={{ margin: '0.5rem 0 0 0', fontWeight: '900', fontSize: '1rem', color: '#00288E', whiteSpace: 'nowrap' }}>{item.value} VND</p>
                   </div>
                 ))}
              </div>
@@ -87,7 +88,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
                   <div key={idx} style={{ marginBottom: '0.8rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: '700', marginBottom: '0.3rem' }}>
                       <span>{item.label}</span>
-                      <span>{item.value} đ</span>
+                      <span style={{ whiteSpace: 'nowrap' }}>{item.value} VND</span>
                     </div>
                     <div style={{ height: '6px', backgroundColor: '#f1f5f9', borderRadius: '3px' }}>
                       <div style={{ height: '100%', width: '70%', backgroundColor: '#00288E', borderRadius: '3px' }}></div>
@@ -120,37 +121,52 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
 
             <div style={{ marginBottom: '2rem' }}>
               <h4 style={{ margin: '0 0 0.8rem 0', fontSize: '0.8rem', fontWeight: '900', color: '#00288E', textTransform: 'uppercase' }}>DANH MỤC SẢN PHẨM</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#0f172a', color: 'white' }}>
-                    <th style={{ padding: '0.8rem', textAlign: 'left', fontSize: '0.65rem' }}>MÔ TẢ CHI TIẾT</th>
-                    <th style={{ padding: '0.8rem', textAlign: 'center', width: '50px' }}>SL</th>
-                    <th style={{ padding: '0.8rem', textAlign: 'right', width: '120px' }}>ĐƠN GIÁ</th>
-                    <th style={{ padding: '0.8rem', textAlign: 'right', width: '140px' }}>THÀNH TIỀN</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(detail.items || []).map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #edf2f7' }}>
-                      <td style={{ padding: '0.8rem', fontSize: '0.75rem', fontWeight: '800' }}>{item.name}</td>
-                      <td style={{ padding: '0.8rem', textAlign: 'center' }}>{item.quantity}</td>
-                      <td style={{ padding: '0.8rem', textAlign: 'right' }}>{item.price?.toLocaleString()} đ</td>
-                      <td style={{ padding: '0.8rem', textAlign: 'right', fontWeight: '900', color: '#00288E' }}>{(item.price * item.quantity)?.toLocaleString()} đ</td>
+              <div style={{ 
+                border: '1px solid #edf2f7', 
+                borderRadius: '1rem', 
+                overflow: 'hidden', 
+                marginBottom: '1rem'
+              }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+                      <th style={{ padding: '1rem 0.8rem', textAlign: 'left', fontSize: '0.7rem', color: '#64748b', fontWeight: '900', border: '1px solid #edf2f7' }}>DANH MỤC</th>
+                      <th style={{ padding: '1rem 0.8rem', textAlign: 'left', fontSize: '0.7rem', color: '#64748b', fontWeight: '900', border: '1px solid #edf2f7' }}>SẢN PHẨM</th>
+                      <th style={{ padding: '1rem 0.8rem', textAlign: 'center', width: '100px', fontSize: '0.7rem', color: '#64748b', fontWeight: '900', border: '1px solid #edf2f7', whiteSpace: 'nowrap' }}>SỐ LƯỢNG</th>
+                      <th style={{ padding: '1rem 0.8rem', textAlign: 'right', minWidth: '150px', width: 'auto', fontSize: '0.7rem', color: '#64748b', fontWeight: '900', border: '1px solid #edf2f7', whiteSpace: 'nowrap' }}>THÀNH TIỀN</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {(detail.items || []).map((item, idx) => (
+                      <tr key={idx}>
+                        <td style={{ padding: '1rem 0.8rem', fontSize: '0.75rem', fontWeight: '700', border: '1px solid #edf2f7' }}>
+                          {item.category || item.categoryName || dbData.categories?.find(c => c.categoryID == item.categoryID)?.categoryName || 'Sản phẩm'}
+                        </td>
+                        <td style={{ padding: '1rem 0.8rem', fontSize: '0.75rem', fontWeight: '800', border: '1px solid #edf2f7' }}>
+                          {item.name || item.productName || dbData.products?.find(p => p.productID == item.productID)?.productName || 'Sản phẩm không xác định'}
+                        </td>
+                        <td style={{ padding: '1rem 0.8rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '800', border: '1px solid #edf2f7' }}>
+                          {item.quantity}
+                        </td>
+                        <td style={{ padding: '1rem 0.8rem', textAlign: 'right', fontSize: '0.75rem', fontWeight: '900', color: '#00288E', border: '1px solid #edf2f7', whiteSpace: 'nowrap' }}>
+                          {((item.price || item.unitPrice || 0) * (item.quantity || 0))?.toLocaleString()} VND
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem' }}>
               <div style={{ padding: '1.5rem', border: '1px solid #edf2f7', borderRadius: '1.5rem' }}>
                 <span style={{ fontSize: '0.6rem', fontWeight: '900', color: '#94a3b8' }}>TRẠNG THÁI</span>
-                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', fontWeight: '700' }}>Đã thanh toán: {paid.toLocaleString()} đ</p>
-                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', fontWeight: '700', color: '#e53e3e' }}>Còn lại: {remaining.toLocaleString()} đ</p>
+                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', fontWeight: '700', whiteSpace: 'nowrap' }}>Đã thanh toán: {paid.toLocaleString()} VND</p>
+                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', fontWeight: '700', color: '#e53e3e', whiteSpace: 'nowrap' }}>Còn lại: {remaining.toLocaleString()} VND</p>
               </div>
-              <div style={{ padding: '1.5rem', backgroundColor: '#0f172a', borderRadius: '1.5rem', color: 'white' }}>
-                <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.7 }}>TỔNG CỘNG</p>
-                <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: '900', color: '#818cf8' }}>{total.toLocaleString()} VNĐ</p>
+              <div style={{ padding: '1.5rem', border: '1px solid #edf2f7', borderRadius: '1.5rem', backgroundColor: '#f8fafc' }}>
+                <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: '900', color: '#94a3b8' }}>TỔNG CỘNG</p>
+                <p style={{ margin: '0.5rem 0 0 0', fontSize: '1.4rem', fontWeight: '900', color: '#00288E', whiteSpace: 'nowrap' }}>{total.toLocaleString()} VND</p>
               </div>
             </div>
           </>
@@ -180,11 +196,31 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
           #printable-area { display: none; }
 
           @media print {
-            @page { 
-              margin: 5mm; 
-            }
-            html {
-              counter-reset: page 0;
+            /* @page margin boxes: đây là cách duy nhất để số trang hiển thị
+               chính xác trên từng trang - browser tự quản lý counter(page) */
+            @page {
+              size: auto;
+              margin: 5mm 5mm 18mm 5mm;
+              @bottom-left {
+                content: "Hệ thống HOLAGROUP ERP - Tài liệu lưu hành nội bộ";
+                font-size: 8pt;
+                color: #94a3b8;
+                font-weight: 700;
+                font-family: 'Inter', sans-serif;
+                border-top: 2px solid #00288E;
+                padding-top: 4pt;
+                vertical-align: top;
+              }
+              @bottom-right {
+                content: "Trang " counter(page);
+                font-size: 8pt;
+                color: #94a3b8;
+                font-weight: 700;
+                font-family: 'Inter', sans-serif;
+                border-top: 2px solid #00288E;
+                padding-top: 4pt;
+                vertical-align: top;
+              }
             }
             body { 
               margin: 0; 
@@ -205,17 +241,6 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
             }
             .print-thead-spacer {
               height: 10mm;
-              counter-increment: page;
-            }
-            .print-footer {
-              position: fixed;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              height: 20mm;
-              background: white;
-              padding: 0 10mm 2mm 10mm;
-              box-sizing: border-box;
             }
             .print-content-table {
               width: 100%;
@@ -223,12 +248,6 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
             }
             .print-main-content {
               padding: 5mm 10mm 5mm 10mm;
-            }
-            .footer-spacer {
-              height: 20mm;
-            }
-            .page-number::after {
-              content: "Trang " counter(page);
             }
             /* TRÁNH NGẮT TRANG GIỮA TIÊU ĐỀ VÀ NỘI DUNG */
             h2, h3, .section-title {
@@ -253,7 +272,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
         </thead>
         <tbody>
           <tr>
-            <td className="print-main-content">
+            <td className="print-main-content" style={{ verticalAlign: 'top' }}>
               {/* OFFSET FIRST PAGE TOP MARGIN */}
               <div style={{ marginTop: '-10mm' }}>
                 {/* HEADER CÔNG TY */}
@@ -286,7 +305,11 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
 
               {/* NỘI DUNG CHÍNH */}
               {renderContent()}
-
+              </div>
+            </td>
+          </tr>
+          <tr style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+            <td>
               {/* CHỮ KÝ */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3rem', textAlign: 'center' }}>
                 <div style={{ width: '45%' }}>
@@ -296,31 +319,15 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
                 </div>
                 <div style={{ width: '45%' }}>
                    <p style={{ margin: 0, fontWeight: '900', fontSize: '0.85rem' }}>KẾ TOÁN TRƯỞNG</p>
-                   <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.6rem', color: '#94a3b8' }}>(Đã ký điện tử)</p>
+                   <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.6rem', color: '#94a3b8' }}>(Ký và ghi rõ họ tên)</p>
                    <div style={{ height: '3rem' }}></div>
                    <p style={{ margin: 0, fontWeight: '900', fontSize: '1rem', color: '#00288E' }}>Hệ thống ERP Hola</p>
                 </div>
               </div>
-                </div>
             </td>
           </tr>
         </tbody>
-        <tfoot>
-          <tr>
-            <td>
-              <div className="footer-spacer"></div>
-            </td>
-          </tr>
-        </tfoot>
       </table>
-
-      {/* FOOTER FIXED - ĐỒNG BỘ STYLE DASHBOARD */}
-      <div className="print-footer">
-        <div style={{ borderTop: '2px solid #00288E', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>
-          <span>Hệ thống HOLAGROUP ERP - Tài liệu lưu hành nội bộ</span>
-          <span className="page-number"></span>
-        </div>
-      </div>
     </div>
   );
 

@@ -4,13 +4,13 @@ import React from 'react';
  * Mẫu in Dashboard kế toán chuyên nghiệp PRO-MAX V4.6
  * Đã phục hồi kích thước hiển thị tối ưu cho khổ A4 và tích hợp Footer đa trang cố định.
  */
-const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe, dynamicLabel }) => {
+const PrintableDashboardTemplate = ({ stats, chartData, timeframeLabels, timeframe, dynamicLabel }) => {
   if (!stats) return null;
 
   const formatDisplayValue = (val) => {
     if (val === undefined || val === null) return '0';
     if (typeof val === 'string') {
-      return val.replace(/[đ₫VNĐ]/g, '').trim();
+      return val.replace(/[đ₫VND]/g, '').trim();
     }
     return val.toLocaleString('vi-VN');
   };
@@ -33,11 +33,31 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe, dynamic
           #printable-dashboard { display: none; }
 
           @media print {
-            @page { 
-              margin: 5mm; 
-            }
-            html {
-              counter-reset: page 0;
+            /* @page margin boxes: đây là cách duy nhất để số trang hiển thị
+               chính xác trên từng trang - browser tự quản lý counter(page) */
+            @page {
+              size: auto;
+              margin: 5mm 5mm 18mm 5mm;
+              @bottom-left {
+                content: "Hệ thống HOLAGROUP ERP - Tài liệu lưu hành nội bộ";
+                font-size: 8pt;
+                color: #94a3b8;
+                font-weight: 700;
+                font-family: 'Inter', 'Segoe UI', sans-serif;
+                border-top: 2px solid #00288E;
+                padding-top: 4pt;
+                vertical-align: top;
+              }
+              @bottom-right {
+                content: "Trang " counter(page);
+                font-size: 8pt;
+                color: #94a3b8;
+                font-weight: 700;
+                font-family: 'Inter', 'Segoe UI', sans-serif;
+                border-top: 2px solid #00288E;
+                padding-top: 4pt;
+                vertical-align: top;
+              }
             }
             body { 
               margin: 0; 
@@ -58,18 +78,6 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe, dynamic
             }
             .print-thead-spacer {
               height: 10mm;
-              counter-increment: page;
-            }
-            .print-footer {
-              position: fixed;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              height: 20mm;
-              background: white;
-              padding: 0 10mm 2mm 10mm;
-              box-sizing: border-box;
-              z-index: 9999;
             }
             .print-content-table {
               width: 100%;
@@ -77,12 +85,6 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe, dynamic
             }
             .print-main-content {
               padding: 5mm 10mm 5mm 10mm;
-            }
-            .footer-spacer {
-              height: 20mm;
-            }
-            .page-number::after {
-              content: "Trang " counter(page);
             }
             /* TRÁNH NGẮT TRANG GIỮA TIÊU ĐỀ VÀ NỘI DUNG */
             h3, .section-title {
@@ -107,7 +109,7 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe, dynamic
         </thead>
         <tbody>
           <tr>
-            <td className="print-main-content">
+            <td className="print-main-content" style={{ verticalAlign: 'top' }}>
               {/* OFFSET FIRST PAGE TOP MARGIN */}
               <div style={{ marginTop: '-10mm' }}>
                 {/* 1. HEADER CÔNG TY */}
@@ -144,10 +146,10 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe, dynamic
               {/* TÓM TẮT CHỈ SỐ (STATS) */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.2rem', marginBottom: '2.5rem' }}>
                 {[
-                  { label: 'TỔNG DOANH THU', value: stats.totalRevenue, color: '#00288E', unit: ' VNĐ' },
-                  { label: 'TỔNG CÔNG NỢ', value: stats.totalDebt, color: '#00288E', unit: ' VNĐ' },
+                  { label: 'TỔNG DOANH THU', value: stats.totalRevenue, color: '#00288E', unit: ' VND' },
+                  { label: 'TỔNG CÔNG NỢ', value: stats.totalDebt, color: '#00288E', unit: ' VND' },
                   { label: 'HÓA ĐƠN CHỜ', value: stats.pendingInvoices, color: '#00288E', unit: '' },
-                  { label: 'THỰC THU', value: stats.totalCollected, color: '#00288E', unit: ' VNĐ' }
+                  { label: 'THỰC THU', value: stats.totalCollected, color: '#00288E', unit: ' VND' }
                 ].map((item, idx) => (
                   <div key={idx} style={{ padding: '1.2rem', border: '1.5px solid #e2e8f0', borderRadius: '1rem', backgroundColor: '#fcfcfc' }}>
                     <p style={{ margin: '0 0 0.8rem 0', fontSize: '0.7rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.05em' }}>{item.label}</p>
@@ -163,6 +165,51 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe, dynamic
                   </div>
                 ))}
               </div>
+
+              {/* BIỂU ĐỒ NHIỆT (Chỉ hiện khi ở chế độ Ngày) */}
+              {timeframe === 'daily' && chartData && chartData.length > 0 && (
+                <div className="print-section" style={{ marginBottom: '30px' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: '900', color: '#0f172a', marginBottom: '1.2rem', borderLeft: '5px solid #00288E', paddingLeft: '0.8rem', textTransform: 'uppercase' }}>
+                    Bản đồ mật độ giao dịch trong tháng
+                  </h3>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(7, 1fr)', 
+                    gap: '5px', 
+                    backgroundColor: '#f8fafc',
+                    padding: '15px',
+                    borderRadius: '15px',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(d => (
+                      <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '900', color: '#94a3b8', paddingBottom: '5px' }}>{d}</div>
+                    ))}
+                    {chartData.map((data, idx) => (
+                      <div 
+                        key={idx} 
+                        style={{ 
+                          height: '45px', 
+                          backgroundColor: data.intensity > 0 ? `rgba(0, 40, 142, ${Math.max(0.05, data.intensity)})` : '#ffffff',
+                          border: '1px solid #f1f5f9',
+                          borderRadius: '8px',
+                          position: 'relative',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <span style={{ position: 'absolute', top: '3px', left: '5px', fontSize: '9px', fontWeight: '900', color: data.intensity > 0.5 ? '#fff' : '#cbd5e1' }}>{data.day}</span>
+                        {data.revenue > 0 && (
+                          <span style={{ fontSize: '8px', fontWeight: '900', color: data.intensity > 0.5 ? '#fff' : '#00288E' }}>
+                            {Math.round(data.revenue / 1000000)}M
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* BẢNG GIAO DỊCH GẦN ĐÂY */}
               <div className="print-section">
@@ -211,7 +258,11 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe, dynamic
                   </tbody>
                 </table>
               </div>
-
+              </div>
+            </td>
+          </tr>
+          <tr style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+            <td>
               {/* CHỮ KÝ */}
               <div className="print-section" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4rem', gap: '8rem', textAlign: 'center' }}>
                 <div style={{ minWidth: '12rem' }}>
@@ -224,26 +275,10 @@ const PrintableDashboardTemplate = ({ stats, timeframeLabels, timeframe, dynamic
                   <div style={{ height: '5rem' }}></div>
                 </div>
               </div>
-              </div>
             </td>
           </tr>
         </tbody>
-        <tfoot>
-          <tr>
-            <td>
-              <div className="footer-spacer"></div>
-            </td>
-          </tr>
-        </tfoot>
       </table>
-
-      {/* FOOTER FIXED */}
-      <div className="print-footer">
-        <div style={{ borderTop: '2px solid #00288E', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700' }}>
-          <span>Hệ thống HOLAGROUP ERP - Tài liệu lưu hành nội bộ</span>
-          <span className="page-number"></span>
-        </div>
-      </div>
     </div>
   );
 };

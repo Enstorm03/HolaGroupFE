@@ -148,7 +148,7 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
                     </div>
                   </td>
                   <td className="px-8 py-5 text-left tabular-nums whitespace-nowrap" data-label="Giá trị">
-                    <span className="text-sm font-black tracking-tighter m-0">{(displayValue || 0).toLocaleString('vi-VN')} <small className="text-[10px] opacity-70 font-bold">VNĐ</small></span>
+                    <span className="text-sm font-black tracking-tighter m-0">{(displayValue || 0).toLocaleString('vi-VN')} <small className="text-[10px] opacity-70 font-bold">VND</small></span>
                   </td>
                   <td className="px-8 py-5 text-center" data-label="Trạng thái">
                     <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm transition-colors whitespace-nowrap ${
