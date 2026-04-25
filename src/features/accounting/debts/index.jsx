@@ -63,9 +63,9 @@ const DebtTracker = () => {
       const q = searchQuery.toLowerCase();
       result = result.filter(d =>
         // SQL-aligned: tìm theo customerName (computed) hoặc invoiceID
-        (d.customerName  || '').toLowerCase().includes(q) ||
-        (d.invoiceID     || '').toLowerCase().includes(q) ||
-        (d.companyName   || '').toLowerCase().includes(q)
+        (d.customerName      || '').toLowerCase().includes(q) ||
+        (String(d.invoiceID) || '').toLowerCase().includes(q) ||
+        (d.companyName       || '').toLowerCase().includes(q)
       );
     }
     
