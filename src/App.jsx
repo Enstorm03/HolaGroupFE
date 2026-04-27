@@ -18,6 +18,7 @@ import PaymentDetail from './features/accounting/payments/detail.jsx';
 import AccountingReport from './features/accounting/reports/accounting/index.jsx';
 import AccountingLayout from './features/accounting/components/Layout/AccountingLayout';
 import TransactionDetail from './features/accounting/dashboard/TransactionDetail.jsx';
+import StaffManagement from './features/staffs/StaffManagement.jsx';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
         {/* Tuyến đường con: /home/customers và /home/orders */}
         <Route path="customers" element={<CustomerList />} />
         <Route path="orders" element={<OrderManager />} />
+        <Route path="staffs" element={<StaffManagement />} />
       </Route>
       
       {/* Tuyến đường Kế toán sử dụng AccountingLayout (Phát triển cục bộ) */}

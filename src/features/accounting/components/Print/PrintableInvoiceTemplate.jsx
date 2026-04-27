@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import dbData from '../../../../../db.json';
+import dbData from "../../../../data/db.json";
 
 /**
  * ⚠️ Mẫu in TỔNG HỢP KẾ TOÁN PRO-MAX V4.5 (Multi-page Fix)
@@ -25,6 +25,7 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
       default: return 'HÓA ĐƠN BÁN HÀNG';
     }
   };
+
 
   const renderContent = () => {
     switch (printMode) {

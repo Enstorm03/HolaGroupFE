@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-
+import CreateOrder from './CreateOrder'; // Nhớ import file CreateOrder vào nhé
 
 const OrderManagement = () => {
   // Dữ liệu mẫu dựa trên thiết kế Figma của bạn
@@ -12,6 +12,9 @@ const OrderManagement = () => {
 
   const [activeTab, setActiveTab] = useState('Tất cả');
   const tabs = ['Tất cả', 'Chờ xác nhận', 'Đang giao', 'Hoàn thành', 'Đã hủy'];
+
+  // State quản lý việc chuyển đổi màn hình
+  const [isCreating, setIsCreating] = useState(false);
 
   // Hàm helper để render màu sắc trạng thái (Badge)
   const getStatusBadge = (status) => {
@@ -29,6 +32,12 @@ const OrderManagement = () => {
     }
   };
 
+  // NẾU ĐANG BẤM NÚT TẠO ĐƠN THÌ HIỂN THỊ COMPONENT CREATE ORDER
+  if (isCreating) {
+    return <CreateOrder onBack={() => setIsCreating(false)} />;
+  }
+
+  // NẾU KHÔNG THÌ HIỂN THỊ MÀN HÌNH DANH SÁCH BÌNH THƯỜNG
   return (
     <div className="flex flex-col gap-6">
       
@@ -42,7 +51,12 @@ const OrderManagement = () => {
           <button className="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-50 flex items-center gap-2 shadow-sm transition-all">
             <span>📥</span> XUẤT EXCEL
           </button>
-          <button className="bg-[#00288E] hover:bg-[#1e40af] text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm flex items-center gap-2">
+          
+          {/* SỰ KIỆN CLICK CHUYỂN TRANG Ở ĐÂY */}
+          <button 
+            onClick={() => setIsCreating(true)}
+            className="bg-[#00288E] hover:bg-[#1e40af] text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm flex items-center gap-2"
+          >
             <span>+</span> TẠO ĐƠN MỚI
           </button>
         </div>
