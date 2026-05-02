@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import '../styles/accounting.css';
 import accountingService from '../services/accountingService';
-import dbData from "../../../data/db.json";
+import dbData from '../../../../db.json';
 import { exportToPDF } from '../utils/exportUtils';
 import PrintableInvoiceTemplate from '../components/Print/PrintableInvoiceTemplate';
 
