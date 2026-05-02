@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import accountingService from '../services/accountingService';
-import dbData from "../../../data/db.json";
+import dbData from '../../../../db.json';
 import '../styles/accounting.css';
 
 const InvoiceDetail = () => {

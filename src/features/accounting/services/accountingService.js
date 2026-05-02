@@ -1,5 +1,5 @@
 import axios from 'axios';
-import dbData from "../../../data/db.json";
+import dbData from '../../../../db.json';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
@@ -562,26 +562,34 @@ const mockInvoices = () => {
   const allProducts = dbData.products || [];
 
   return getAllCurrentInvoices().map(inv => {
-    const order = allOrders.find(o => o.orderID === inv.orderID);
+    const order = allOrders.find(o => Number(o.orderID) === Number(inv.orderID));
     const customer = getCustomerDetails(inv.customerID || order?.customerID);
     
-    // Join items from OrderItems and Products
-    const items = allOrderItems
-      .filter(oi => oi.orderID === inv.orderID)
-      .map(oi => {
-        const product = allProducts.find(p => p.productID === oi.productID);
+      // Join items from OrderItems and Products
+      const items = allOrderItems
+        .filter(oi => Number(oi.orderID) === Number(inv.orderID))
+        .map(oi => {
+          const product = allProducts.find(p => p.productID === oi.productID);
+          return {
+            ...oi,
+            name: product?.productName || oi.productName || oi.name || 'Sản phẩm không xác định',
+            productName: product?.productName || oi.productName || oi.name || 'Sản phẩm không xác định',
+            categoryID: product?.categoryID || oi.categoryID,
+            unit: product?.unit || oi.unit || 'đv'
+          };
+        });
+
+      // Fallback: If no order items found but invoice has embedded items (legacy/local)
+      const finalItems = items.length > 0 ? items : (inv.items || []).map(it => {
+        const product = allProducts.find(p => p.productID === it.productID);
         return {
-          ...oi,
-          productName: product?.productName || 'Sản phẩm không xác định',
-          unit: product?.unit || 'đv'
+          ...it,
+          categoryID: it.categoryID || product?.categoryID
         };
       });
 
-    // Fallback: If no order items found but invoice has embedded items (legacy/local)
-    const finalItems = items.length > 0 ? items : (inv.items || []);
-
     const normalizedStatus = normalizeInvoiceStatus(inv.status);
-    const payments = allPayments.filter(p => p.invoiceID === inv.invoiceID && (p.status === 'completed' || normalizeInvoiceStatus(p.status) === 'paid'));
+    const payments = allPayments.filter(p => Number(p.invoiceID) === Number(inv.invoiceID) && (p.status === 'completed' || normalizeInvoiceStatus(p.status) === 'paid'));
     let paidAt = null;
     
     if (normalizedStatus === 'paid') {
@@ -595,14 +603,24 @@ const mockInvoices = () => {
       }
     }
 
+    // Logic tự động set trạng thái quá hạn
+    let effectiveStatus = normalizedStatus;
+    if (effectiveStatus !== 'paid' && inv.dueDate) {
+      const dueObj = parseDateToObj(inv.dueDate);
+      if (dueObj && dueObj < new Date()) {
+        effectiveStatus = 'overdue';
+      }
+    }
+
     return {
       ...inv,
+      status: effectiveStatus, // Ghi đè trạng thái thực tế
       displayID: formatDisplayCode(inv.invoiceID, 'INV'),
       displayOrderID: (inv.orderID && !isNaN(inv.orderID))
         ? formatDisplayCode(inv.orderID, 'ORD')
         : (inv.orderID || 'N/A'),
       ...customer,
-      orderStatus: getStatusLabelVN(inv.status),
+      orderStatus: getStatusLabelVN(effectiveStatus),
       date: inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString('vi-VN') : 'N/A',
       items: finalItems,
       paidAt: paidAt
@@ -629,56 +647,93 @@ const mockPayments = () => {
 };
 
 const mockDebtReport = () => {
-  const allInvoices = getAllCurrentInvoices();
   const today = new Date();
+  today.setHours(0, 0, 0, 0); // So sánh theo ngày, bỏ qua giờ
 
-  const allOrders = dbData.orders || [];
-  // Chỉ lấy hóa đơn chưa thanh toán xong (pending, partial, overdue)
-  const debtItems = allInvoices
-    .filter(inv => normalizeInvoiceStatus(inv.status) !== 'paid')
-    .map(inv => {
-      const order = allOrders.find(o => o.orderID === inv.orderID);
-      const customer = getCustomerDetails(inv.customerID || order?.customerID);
-      const total = Number(inv.totalAmount) || 0;
-      const paid = Number(inv.paidAmount) || 0;
-      const remaining = total - paid;
-      
-      const due = new Date(inv.dueDate);
-      const diffTime = today - due;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      const overdueDays = diffTime > 0 ? diffDays : 0;
+  // Lấy tất cả hóa đơn đã được enrich (có customerName, effectiveStatus)
+  const allProcessedInvoices = mockInvoices();
 
-      // Logic xác định mức độ rủi ro (Risk Level)
-      let risk = 'medium';
-      if (overdueDays > 30 || remaining > 100000000) risk = 'critical';
-      else if (overdueDays > 15 || remaining > 50000000) risk = 'high';
+  // Lọc hóa đơn quá hạn: DUAL CHECK
+  // 1. Kiểm tra trạng thái đã là 'overdue'
+  // 2. HOẶC chưa thanh toán xong và dueDate đã qua
+  const overdueInvoices = allProcessedInvoices.filter(inv => {
+    const status = normalizeInvoiceStatus(inv.status);
+    if (status === 'paid') return false;
+    if (status === 'overdue') return true;
+    if (inv.dueDate) {
+      const dueObj = parseDateToObj(inv.dueDate);
+      if (dueObj) {
+        const dueCopy = new Date(dueObj);
+        dueCopy.setHours(0, 0, 0, 0);
+        if (dueCopy < today) return true;
+      }
+    }
+    return false;
+  });
 
-      return {
-        invoiceID: inv.invoiceID,
-        displayID: formatDisplayCode(inv.invoiceID, 'INV'),
-        ...customer,
-        totalAmount: total,
-        remainingAmount: remaining,
-        daysOverdue: overdueDays,
-        riskLevel: risk,
-        autoRemind: remaining > 10000000, // Tự động nếu nợ lớn
-        lastReminderDate: overdueDays > 7 ? "20/04/2026" : null, // Mock dữ liệu lần nhắc cuối
+  // Nhóm theo khách hàng (debt hiển thị theo từng khách hàng)
+  const customerMap = {};
+  for (const inv of overdueInvoices) {
+    const custID = String(inv.customerID || 'unknown');
+    const dueObj = parseDateToObj(inv.dueDate);
+    let overdueDays = 0;
+    if (dueObj) {
+      const dueCopy = new Date(dueObj);
+      dueCopy.setHours(0, 0, 0, 0);
+      const diffTime = today - dueCopy;
+      overdueDays = diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
+    }
+    const remaining = Math.max(0, (Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0));
+
+    if (!customerMap[custID]) {
+      customerMap[custID] = {
+        customerID: inv.customerID,
+        customerName: inv.customerName || 'Khách hàng lẻ',
+        email: inv.email || null,
+        phoneNumber: inv.phoneNumber || null,
+        companyName: inv.companyName || null,
+        invoiceIDs: [],
+        totalAmount: 0,
+        remainingAmount: 0,
+        maxOverdueDays: 0,
       };
-    });
+    }
 
-  // Tính toán số liệu tổng hợp cho Summary Cards
-  const totalDebtVal = debtItems.reduce((sum, d) => sum + d.remainingAmount, 0);
-  const overdueDebtVal = debtItems
-    .filter(d => d.daysOverdue > 0)
-    .reduce((sum, d) => sum + d.remainingAmount, 0);
-  const uniqueCustomers = new Set(debtItems.map(d => d.customerID)).size;
+    customerMap[custID].invoiceIDs.push(inv.invoiceID);
+    customerMap[custID].totalAmount += Number(inv.totalAmount) || 0;
+    customerMap[custID].remainingAmount += remaining;
+    customerMap[custID].maxOverdueDays = Math.max(customerMap[custID].maxOverdueDays, overdueDays);
+  }
+
+  // Chuyển map thành mảng và tính risk
+  const debtItems = Object.values(customerMap).map(cust => {
+    const days = cust.maxOverdueDays;
+    let risk = 'medium';
+    if (days > 30 || cust.remainingAmount > 100000000) risk = 'critical';
+    else if (days > 15 || cust.remainingAmount > 50000000) risk = 'high';
+
+    return {
+      ...cust,
+      invoiceID: cust.invoiceIDs[0],
+      displayID: cust.invoiceIDs.map(id => formatDisplayCode(id, 'INV')).join(', '),
+      daysOverdue: days,
+      riskLevel: risk,
+      autoRemind: cust.remainingAmount > 10000000,
+      lastReminderDate: days > 7 ? '20/04/2026' : null,
+    };
+  });
+
+  // Tính summary
+  const allUnpaid = allProcessedInvoices.filter(inv => normalizeInvoiceStatus(inv.status) !== 'paid');
+  const totalDebtVal = allUnpaid.reduce((sum, inv) => sum + Math.max(0, (Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0)), 0);
+  const overdueDebtVal = debtItems.reduce((sum, d) => sum + d.remainingAmount, 0);
 
   return {
     data: debtItems,
     summary: {
-      totalDebt: totalDebtVal.toLocaleString('vi-VN') + " VND",
-      overdueDebt: overdueDebtVal.toLocaleString('vi-VN') + " VND",
-      customerCount: uniqueCustomers.toString()
+      totalDebt: totalDebtVal.toLocaleString('vi-VN') + ' VND',
+      overdueDebt: overdueDebtVal.toLocaleString('vi-VN') + ' VND',
+      customerCount: debtItems.length.toString()
     }
   };
 };
