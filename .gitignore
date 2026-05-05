@@ -27,7 +27,6 @@ dist-ssr
 # Custom
 .agents/
 .env
-db.json
-routes.json
+
 src/features/accounting/Readme/
 a.md

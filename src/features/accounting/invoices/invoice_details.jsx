@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import accountingService from '../services/accountingService';
-import dbData from '../../../../db.json';
+import dbData from '../mockdata/db.json';
 import '../styles/accounting.css';
 
 const InvoiceDetail = () => {
@@ -138,14 +138,14 @@ const InvoiceDetail = () => {
                         <td className="px-6 py-5" data-label="Danh mục">
                           <div className="flex flex-col">
                             <span className="text-[10px] text-acc-primary font-black uppercase tracking-widest mb-0.5 whitespace-nowrap block w-fit max-w-[150px] truncate">
-                             {item.categoryName || dbData.categories?.find(c => c.categoryID == item.categoryID)?.categoryName || 'Danh mục'}
+                             {item.categoryName || 'Danh mục'}
                             </span>
                           </div>
                         </td>
                         <td className="px-4 py-5" data-label="Sản phẩm">
                            <div className="flex flex-col">
                               <p className="text-sm font-black text-acc-text-main leading-tight italic truncate max-w-[400px]" title={item.name || item.productName}>
-                                {item.name || item.productName || dbData.products?.find(p => p.productID == item.productID)?.productName || 'Sản phẩm không xác định'}
+                                {item.name || item.productName || 'Sản phẩm không xác định'}
                               </p>
                               <p className="text-[9px] text-slate-300 font-bold uppercase tracking-wider mt-1 whitespace-nowrap">Mã: {item.productID || item.id || i + 1}</p>
                            </div>
