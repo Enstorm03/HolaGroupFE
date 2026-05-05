@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import '../styles/accounting.css';
 import accountingService from '../services/accountingService';
-import dbData from '../../../../db.json';
+import dbData from '../mockdata/db.json';
 import { exportToPDF } from '../utils/exportUtils';
 import PrintableInvoiceTemplate from '../components/Print/PrintableInvoiceTemplate';
 
@@ -491,12 +491,12 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                           <td className="p-5" data-label="Danh mục">
                             <span className="text-[10px] text-acc-primary font-black uppercase tracking-widest px-2 py-1 bg-acc-primary/5 rounded-lg whitespace-nowrap block w-fit max-w-[150px] truncate">
-                              {item.categoryName || dbData.categories?.find(c => c.categoryID == item.categoryID)?.categoryName || 'Sản phẩm'}
+                              {item.categoryName || 'Sản phẩm'}
                             </span>
                           </td>
                           <td className="p-5 text-sm font-black text-acc-text-main" data-label="Sản phẩm">
                             <div className="truncate max-w-[200px] md:max-w-[300px] lg:max-w-[400px]" title={item.name || item.productName}>
-                              {item.name || item.productName || dbData.products?.find(p => p.productID == item.productID)?.productName || 'Sản phẩm không xác định'}
+                              {item.name || item.productName || 'Sản phẩm không xác định'}
                             </div>
                           </td>
                           <td className="p-5 text-left font-bold text-slate-500" data-label="Số lượng">{item.quantity}</td>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import dbData from '../../../../../db.json';
+import dbData from '../../mockdata/db.json';
 
 /**
  * ⚠️ Mẫu in TỔNG HỢP KẾ TOÁN PRO-MAX V4.5 (Multi-page Fix)
@@ -140,10 +140,10 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
                     {(detail.items || []).map((item, idx) => (
                       <tr key={idx}>
                         <td style={{ padding: '1rem 0.8rem', fontSize: '0.75rem', fontWeight: '700', border: '1px solid #edf2f7' }}>
-                          {item.category || item.categoryName || dbData.categories?.find(c => c.categoryID == item.categoryID)?.categoryName || 'Sản phẩm'}
+                          {item.category || item.categoryName || 'Sản phẩm'}
                         </td>
                         <td style={{ padding: '1rem 0.8rem', fontSize: '0.75rem', fontWeight: '800', border: '1px solid #edf2f7' }}>
-                          {item.name || item.productName || dbData.products?.find(p => p.productID == item.productID)?.productName || 'Sản phẩm không xác định'}
+                          {item.name || item.productName || 'Sản phẩm không xác định'}
                         </td>
                         <td style={{ padding: '1rem 0.8rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: '800', border: '1px solid #edf2f7' }}>
                           {item.quantity}

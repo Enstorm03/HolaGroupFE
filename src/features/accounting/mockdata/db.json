@@ -1,0 +1,79 @@
+{
+  "roles": [
+    { "roleID": 1, "roleName": "Kế toán trưởng" },
+    { "roleID": 2, "roleName": "Nhân viên Sales" },
+    { "roleID": 3, "roleName": "Quản trị viên" }
+  ],
+  "users": [
+    { "userID": 1, "lastName": "Nguyễn Văn", "firstName": "An", "dateOfBirth": "1990-01-01", "phoneNumber": "0901112222", "email": "an.nv@hola.com", "address": "TP.HCM", "roleID": 2 },
+    { "userID": 2, "lastName": "Trần Thị", "firstName": "Bình", "dateOfBirth": "1992-05-05", "phoneNumber": "0903334444", "email": "binh.tt@hola.com", "address": "Hà Nội", "roleID": 2 },
+    { "userID": 3, "lastName": "Võ", "firstName": "Huy", "dateOfBirth": "1988-12-25", "phoneNumber": "0933445566", "email": "votruonghuy25@gmail.com", "address": "Quận 1, TP.HCM", "roleID": 1 }
+  ],
+  "customers": [
+    { "customerID": 1, "firstName": "Kiến Trúc Việt", "lastName": "Công ty CP", "address": "123 Đường Lê Lợi, Quận 1, TP.HCM", "phoneNumber": "0901234567", "email": "ktviet@email.com", "companyName": "Công ty CP Kiến Trúc Việt", "status": "ACTIVE" },
+    { "customerID": 2, "firstName": "Hola miền Nam", "lastName": "Đại lý", "address": "456 Nguyễn Hữu Thọ, Quận 7, TP.HCM", "phoneNumber": "0988776655", "email": "holamn@email.com", "companyName": "Đại lý Hola miền Nam", "status": "ACTIVE" },
+    { "customerID": 3, "firstName": "Việt Thắng", "lastName": "Tập đoàn Dệt may", "address": "KCN Linh Trung, Thủ Đức, TP.HCM", "phoneNumber": "02838445566", "email": "vietthang@email.com", "companyName": "Tập đoàn Dệt may Việt Thắng", "status": "INACTIVE" }
+  ],
+  "orders": [
+    { "orderID": 100, "paymentTerm": "30 days", "paymentMethod": "CASH", "orderStatus": "DELIVERED", "orderDate": "2026-04-08", "deliveryDate": "2026-04-08", "customerID": 3, "opportunityID": null, "totalAmount": 50000000, "taxAmount": 5000000, "discountAmount": 0, "paidAmount": 50000000 },
+    { "orderID": 101, "paymentTerm": "30 days", "paymentMethod": "TRANSFER", "orderStatus": "DELIVERED", "orderDate": "2026-04-15", "deliveryDate": "2026-04-20", "customerID": 1, "opportunityID": null, "totalAmount": 200000000, "taxAmount": 20000000, "discountAmount": 0, "paidAmount": 12500000 },
+    { "orderID": 102, "paymentTerm": "COD", "paymentMethod": "CASH", "orderStatus": "DELIVERED", "orderDate": "2026-04-16", "deliveryDate": "2026-04-16", "customerID": 2, "opportunityID": null, "totalAmount": 12500000, "taxAmount": 1250000, "discountAmount": 0, "paidAmount": 12500000 }
+  ],
+  "invoices": [
+    { "invoiceID": 0, "invoiceDate": "2026-04-08", "dueDate": "2026-05-08", "totalAmount": 55000000, "paidAmount": 55000000, "status": "PAID", "createAt": "2026-04-08", "orderID": 100 },
+    { "invoiceID": 1, "invoiceDate": "2026-04-15", "dueDate": "2026-05-15", "totalAmount": 220000000, "paidAmount": 0, "status": "OVERDUE", "createAt": "2026-04-15", "orderID": 101 },
+    { "invoiceID": 2, "invoiceDate": "2026-04-16", "dueDate": "2026-04-20", "totalAmount": 13750000, "paidAmount": 13750000, "status": "PAID", "createAt": "2026-04-16", "orderID": 102 }
+  ],
+  "payments": [
+    { "paymentID": 0, "amount": 55000000, "paymentMethod": "CASH", "paymentDate": "2026-04-08", "status": "COMPLETED", "invoiceID": 0 },
+    { "paymentID": 1, "amount": 13750000, "paymentMethod": "CASH", "paymentDate": "2026-04-17", "status": "COMPLETED", "invoiceID": 2 }
+  ],
+  "quarterly_reports": [
+    {
+      "reportID": 1, "quarter": 1, "year": 2026,
+      "title": "Báo cáo Thuế Quý 1/2026",
+      "status": "APPROVED",
+      "totalRevenue": 4250000000,
+      "vatOut": 425000000,
+      "vatDeductible": 120000000,
+      "createdAt": "2026-04-01",
+      "note": "Báo cáo tuân thủ thông tư 80/2021/TT-BTC.",
+      "breakdown": [
+        { "label": "Thuế GTGT Hàng hóa", "value": "245.000.000" },
+        { "label": "Thuế GTGT Dịch vụ", "value": "180.000.000" },
+        { "label": "Chi phí khấu trừ", "value": "120.000.000" },
+        { "label": "Dự phòng rủi ro", "value": "45.000.000" }
+      ],
+      "timeline": [
+        { "step": "Khởi tạo báo cáo", "time": "08:30 01/04", "by": "Hệ thống ERP", "done": true },
+        { "step": "Kế toán tổng hợp soát xét", "time": "14:15 01/04", "by": "Nguyễn Văn An", "done": true },
+        { "step": "Kế toán trưởng phê duyệt", "time": "16:45 01/04", "by": "Võ Huy", "done": true },
+        { "step": "Gửi cơ quan thuế", "time": "Chờ thực hiện", "by": "Quản trị viên", "done": false }
+      ]
+    }
+  ],
+  "orderItems": [
+    { "orderID": 100, "productID": 1, "quantity": 100, "unitPrice": 320000, "discount": 0 },
+    { "orderID": 100, "productID": 2, "quantity": 50, "unitPrice": 450000, "discount": 0 },
+    { "orderID": 101, "productID": 1, "quantity": 500, "unitPrice": 320000, "discount": 0 },
+    { "orderID": 101, "productID": 3, "quantity": 20, "unitPrice": 2000000, "discount": 0 },
+    { "orderID": 102, "productID": 2, "quantity": 25, "unitPrice": 450000, "discount": 0 }
+  ],
+  "categories": [
+    { "categoryID": 1, "categoryName": "Gạch men & Đá", "priceListItemID": 1 },
+    { "categoryID": 2, "categoryName": "Thiết bị vệ sinh", "priceListItemID": 2 },
+    { "categoryID": 3, "categoryName": "Gỗ & Sàn", "priceListItemID": 3 }
+  ],
+  "products": [
+    { "productID": 1, "productName": "Gạch men cao cấp 60x60", "salePrice": 320000, "unit": "m2", "status": "ACTIVE", "categoryID": 1 },
+    { "productID": 2, "productName": "Đá hoa cương đen Huế", "salePrice": 450000, "unit": "m2", "status": "ACTIVE", "categoryID": 1 },
+    { "productID": 3, "productName": "Bồn cầu thông minh Hola-X1", "salePrice": 2000000, "unit": "bộ", "status": "ACTIVE", "categoryID": 2 },
+    { "productID": 4, "productName": "Sàn gỗ công nghiệp 8mm", "salePrice": 185000, "unit": "m2", "status": "ACTIVE", "categoryID": 3 }
+  ],
+  "stats": {
+    "totalBalance": "1.250.000.000",
+    "revenue": "845.000.000",
+    "expense": "320.000.000",
+    "pending": "125.000.000"
+  }
+}
