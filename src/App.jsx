@@ -20,6 +20,14 @@ import AccountingLayout from './features/accounting/components/Layout/Accounting
 import TransactionDetail from './features/accounting/dashboard/TransactionDetail.jsx';
 import StaffManagement from './features/staffs/StaffManagement.jsx';
 
+// Kho hàng (Warehouse Module)
+import WarehouseLayout from './features/warehouse/components/Layout/WarehouseLayout';
+import WarehouseDashboard from './features/warehouse/pages/WarehouseDashboard';
+import DeliveryOrders from './features/warehouse/pages/DeliveryOrders';
+import DeliveryDetail from './features/warehouse/pages/DeliveryDetail';
+import StockImport from './features/warehouse/pages/StockImport';
+import InventoryReport from './features/warehouse/pages/InventoryReport';
+
 function App() {
   return (
     <Routes>
@@ -46,6 +54,15 @@ function App() {
         <Route path="payments/detail" element={<PaymentDetail />} />
         <Route path="reports" element={<AccountingReport />} />
         <Route path="transaction/:id" element={<TransactionDetail />} />
+      </Route>
+
+      {/* Tuyến đường Kho hàng sử dụng WarehouseLayout */}
+      <Route path="/warehouse" element={<WarehouseLayout />}>
+        <Route index element={<WarehouseDashboard />} />
+        <Route path="delivery" element={<DeliveryOrders />} />
+        <Route path="delivery/:id" element={<DeliveryDetail />} />
+        <Route path="stock-import" element={<StockImport />} />
+        <Route path="inventory" element={<InventoryReport />} />
       </Route>
     </Routes>
   );
