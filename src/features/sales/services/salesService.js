@@ -1,4 +1,7 @@
-import dbData from '../../accounting/mockdata/db.json';
+import api from '../../../services/api';
+import dbData from '../../../../db.json';
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 // ─── UTILITIES ──────────────────────────────────────────────────────────────
 
@@ -31,6 +34,20 @@ const getLocalCustomers = () => {
   } catch (e) { return []; }
 };
 
+const getLocalProducts = () => {
+  try {
+    const raw = localStorage.getItem('added_products');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+};
+
+const getDeletedProductIds = () => {
+  try {
+    const raw = localStorage.getItem('deleted_product_ids');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+};
+
 const getInvoiceOverrides = () => {
   try {
     const raw = localStorage.getItem('invoice_overrides');
@@ -40,113 +57,717 @@ const getInvoiceOverrides = () => {
 
 const getAllCurrentInvoices = () => {
   const local = getLocalInvoices();
-  const api = dbData.invoices || [];
+  const apiData = dbData.invoices || [];
   const overrides = getInvoiceOverrides();
   
-  // Lọc bỏ các invoice trong api đã bị override
   const overrideIds = new Set(overrides.map(ov => ov.invoiceID));
   return [
     ...local,
     ...overrides,
-    ...api.filter(a => !overrideIds.has(a.invoiceID))
+    ...apiData.filter(a => !overrideIds.has(a.invoiceID))
   ];
+};
+
+// ─── AUTH HELPERS ────────────────────────────────────────────────────────────
+const getCurrentUser = () => {
+  try {
+    const raw = localStorage.getItem('current_user') || localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
 };
 
 // ─── SALES SERVICE LOGIC ───────────────────────────────────────────────────
 
 const salesService = {
-  // Lấy danh sách khách hàng (Gộp JSON + LocalStorage)
+  // Lấy danh sách khách hàng
   getCustomers: async () => {
-    const local = getLocalCustomers();
-    const api = dbData.customers || [];
-    
-    // Thu thập thêm khách hàng từ hóa đơn/đơn hàng nếu có (trong trường hợp customerID là object hoặc tên)
-    const invoices = getAllCurrentInvoices();
-    const orders = [...getLocalOrders(), ...(dbData.orders || [])];
-    
-    // Map IDs to unique customers
-    const customerMap = new Map();
-    api.forEach(c => customerMap.set(c.customerID, c));
-    local.forEach(c => customerMap.set(c.customerID, c));
-    
-    return Array.from(customerMap.values());
+    if (USE_MOCK) {
+      const local = getLocalCustomers();
+      const apiData = dbData.customers || [];
+      const deletedIds = JSON.parse(localStorage.getItem('deleted_customer_ids') || '[]');
+      const deletedSet = new Set(deletedIds.map(Number));
+
+      // Dùng Number() làm key thống nhất để tránh conflict giữa string "1" và number 1
+      const customerMap = new Map();
+      apiData.forEach(c => {
+        if (!deletedSet.has(Number(c.customerID))) {
+          customerMap.set(Number(c.customerID), c);
+        }
+      });
+      
+      // Các khách hàng ở local (added_customers) chắc chắn đang kích hoạt (vì khi xóa đã bị lọc ra khỏi local)
+      // Do đó không cần check qua deletedSet, giúp hiển thị ngay cả khi có xung đột ID cũ.
+      local.forEach(c => {
+        customerMap.set(Number(c.customerID), c);
+      });
+
+      // Tự động dọn dẹp các ID bị xung đột trong danh sách đã xóa nếu có
+      const cleanDeletedIds = deletedIds.filter(id => !local.some(lc => Number(lc.customerID) === Number(id)));
+      if (cleanDeletedIds.length !== deletedIds.length) {
+        localStorage.setItem('deleted_customer_ids', JSON.stringify(cleanDeletedIds));
+      }
+
+      return Array.from(customerMap.values());
+    }
+    const response = await api.get('/customers');
+    return response.data;
   },
 
-  // Lấy danh sách đơn hàng (Gộp JSON + LocalStorage + Inferred from Invoices)
-  getOrders: async () => {
-    const localOrders = getLocalOrders();
-    const apiOrders = dbData.orders || [];
-    const allInvoices = getAllCurrentInvoices();
-    const customers = await salesService.getCustomers();
+  // Lấy danh sách đơn hàng (Lọc theo nhân viên nếu có userID và theo thời gian)
+  getOrders: async (userID, timeframe, options = {}) => {
+    if (USE_MOCK) {
+      const currentUser = getCurrentUser();
+      const activeUserID = userID || currentUser?.userID;
 
-    // Tập hợp tất cả đơn hàng
-    let orders = [...localOrders, ...apiOrders];
+      const localOrders = getLocalOrders();
+      const apiOrders = dbData.orders || [];
+      const allInvoices = getAllCurrentInvoices();
+      const customers = await salesService.getCustomers();
 
-    // Bổ sung các đơn hàng "vô hình" từ hóa đơn (nếu invoice có orderID mà chưa có trong list orders)
-    allInvoices.forEach(inv => {
-      if (inv.orderID && !orders.some(o => o.orderID === inv.orderID)) {
-        orders.push({
-          orderID: inv.orderID,
-          customerID: inv.customerID,
-          totalAmount: inv.totalAmount,
-          orderDate: inv.invoiceDate,
-          orderStatus: inv.status === 'PAID' ? 'DELIVERED' : 'PENDING',
-          isAutoGenerated: true
+      // Kết hợp tất cả các nguồn đơn hàng
+      let orders = [...localOrders, ...apiOrders];
+
+      // Thêm các đơn hàng từ hóa đơn nếu chưa tồn tại trong danh sách đơn hàng
+      allInvoices.forEach(inv => {
+        if (inv.orderID && !orders.some(o => o.orderID === inv.orderID)) {
+          orders.push({
+            orderID: inv.orderID,
+            customerID: inv.customerID,
+            userID: inv.userID || 1,
+            totalAmount: inv.totalAmount,
+            orderDate: inv.invoiceDate || inv.createAt,
+            orderStatus: inv.status === 'PAID' ? 'DELIVERED' : 'PENDING',
+            isAutoGenerated: true
+          });
+        }
+      });
+
+      // ─── LỌC THEO THỜI GIAN ────────────────────────────────────────────────
+      if (timeframe && timeframe !== 'all') {
+        const { filterDate, filterWeek, filterYear, selectedDay, filterYearsCount } = options;
+        const now = new Date();
+
+        orders = orders.filter(o => {
+          const d = new Date(o.orderDate || o.date);
+          if (isNaN(d.getTime())) return false;
+
+          if (timeframe === 'daily') {
+            const [y, m] = filterDate.split('-').map(Number);
+            return d.getFullYear() === y && (d.getMonth() + 1) === m && d.getDate() === selectedDay;
+          }
+          if (timeframe === 'weekly') {
+            const [y, w] = filterWeek.split('-W').map(Number);
+            const getWeek = (date) => {
+              const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+              const dayNum = d.getUTCDay() || 7;
+              d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+              const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+              return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+            };
+            return d.getFullYear() === y && getWeek(d) === w;
+          }
+          if (timeframe === 'monthly') {
+            return d.getFullYear() === filterYear;
+          }
+          if (timeframe === 'yearly') {
+            return d.getFullYear() > (now.getFullYear() - filterYearsCount);
+          }
+          return true;
         });
       }
-    });
 
-    return orders.map(order => {
-      const customer = customers.find(c => c.customerID === order.customerID);
-      const displayID = formatDisplayCode(order.orderID, 'ORD');
-      
-      return {
-        ...order,
-        displayID,
-        customerName: customer ? (customer.companyName || `${customer.lastName} ${customer.firstName}`) : (order.customerName || 'Khách hàng lẻ'),
-        date: order.orderDate || order.date || 'N/A'
-      };
-    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+      // Lọc theo userID nếu được yêu cầu (hoặc nếu là nhân viên sale)
+      if (activeUserID && currentUser?.roleID === 2 && !options.ignoreUserFilter) {
+        orders = orders.filter(o => Number(o.userID) === Number(activeUserID));
+      }
+
+      return orders.map(order => {
+        const customer = customers.find(c => c.customerID === order.customerID);
+        const displayID = formatDisplayCode(order.orderID, 'ORD');
+        
+        // ĐỒNG BỘ VAT: Tính lại tổng tiền có VAT 10% cho bảng đơn hàng
+        const rawTotal = Number(order.totalAmount) || 0;
+        const totalWithVAT = rawTotal * 1.1; // Giả định thuế 10% như bên Kế toán
+
+        return {
+          ...order,
+          displayID,
+          totalAmount: totalWithVAT,
+          customerName: customer ? (customer.companyName || `${customer.lastName} ${customer.firstName}`) : (order.customerName || 'Khách hàng lẻ'),
+          date: (order.orderDate || order.date) ? new Date(order.orderDate || order.date).toLocaleDateString('vi-VN') : 'N/A'
+        };
+      }).sort((a, b) => {
+        const dateA = new Date(a.orderDate || a.date);
+        const dateB = new Date(b.orderDate || b.date);
+        if (dateB.getTime() !== dateA.getTime()) {
+          return dateB - dateA;
+        }
+        // Tie-breaker: Highest ID first
+        const idA = Number(a.orderID) || 0;
+        const idB = Number(b.orderID) || 0;
+        return idB - idA;
+      });
+    }
+    const response = await api.get('/api/orders', { params: { userID, timeframe, ...options } });
+    return response.data;
   },
 
   // Lấy danh sách sản phẩm
   getProducts: async () => {
-    return dbData.products || [];
+    if (USE_MOCK) {
+      const local = getLocalProducts();
+      const apiData = dbData.products || [];
+      const deletedIds = getDeletedProductIds();
+      const deletedSet = new Set(deletedIds.map(Number));
+
+      const productMap = new Map();
+      apiData.forEach(p => {
+        if (!deletedSet.has(Number(p.productID))) {
+          productMap.set(Number(p.productID), p);
+        }
+      });
+      
+      local.forEach(p => {
+        productMap.set(Number(p.productID), p);
+      });
+
+      return Array.from(productMap.values());
+    }
+    const response = await api.get('/products');
+    return response.data;
+  },
+
+  // Tạo sản phẩm mới
+  createProduct: async (productData) => {
+    if (USE_MOCK) {
+      const local = getLocalProducts();
+      const apiData = dbData.products || [];
+      const deletedIds = getDeletedProductIds();
+      
+      const allIds = [
+        ...local.map(p => Number(p.productID) || 0),
+        ...apiData.map(p => Number(p.productID) || 0),
+        ...deletedIds.map(Number)
+      ];
+      
+      const maxId = allIds.reduce((max, id) => Math.max(max, id), 0);
+
+      const newProduct = {
+        ...productData,
+        productID: maxId + 1
+      };
+      localStorage.setItem('added_products', JSON.stringify([newProduct, ...local]));
+      return newProduct;
+    }
+    const response = await api.post('/products', productData);
+    return response.data;
+  },
+
+  // Cập nhật thông tin sản phẩm
+  updateProduct: async (productID, productData) => {
+    if (USE_MOCK) {
+      const local = getLocalProducts();
+      const updatedLocal = local.map(p => 
+        Number(p.productID) === Number(productID) ? { ...p, ...productData } : p
+      );
+      const isOriginal = !local.some(p => Number(p.productID) === Number(productID));
+      if (isOriginal) {
+        const originalProduct = dbData.products.find(p => Number(p.productID) === Number(productID));
+        if (originalProduct) {
+          const updatedOriginal = { ...originalProduct, ...productData };
+          localStorage.setItem('added_products', JSON.stringify([updatedOriginal, ...local]));
+        }
+      } else {
+        localStorage.setItem('added_products', JSON.stringify(updatedLocal));
+      }
+      return { success: true };
+    }
+    const response = await api.put(`/products/${productID}`, productData);
+    return response.data;
+  },
+
+  // Xóa sản phẩm
+  deleteProduct: async (productID) => {
+    if (USE_MOCK) {
+      const local = getLocalProducts();
+      const updatedLocal = local.filter(p => Number(p.productID) !== Number(productID));
+      localStorage.setItem('added_products', JSON.stringify(updatedLocal));
+      
+      const deletedIds = getDeletedProductIds();
+      if (!deletedIds.includes(Number(productID))) {
+        deletedIds.push(Number(productID));
+        localStorage.setItem('deleted_product_ids', JSON.stringify(deletedIds));
+      }
+      return { success: true };
+    }
+    const response = await api.delete(`/products/${productID}`);
+    return response.data;
   },
 
   // Lấy danh sách danh mục
   getCategories: async () => {
-    return dbData.categories || [];
+    if (USE_MOCK) return dbData.categories || [];
+    const response = await api.get('/categories');
+    return response.data;
   },
 
-  // Lấy thống kê Dashboard (Tính toán từ data thực tế)
-  getDashboardStats: async () => {
-    const orders = await salesService.getOrders();
-    const customers = await salesService.getCustomers();
-    const invoices = getAllCurrentInvoices();
+  // Lấy danh sách báo giá
+  getQuotations: async (userID, timeframe, options = {}) => {
+    if (USE_MOCK) {
+      const currentUser = getCurrentUser();
+      const activeUserID = userID || currentUser?.userID;
+      const apiQuotes = dbData.quotations || [];
+      const customers = await salesService.getCustomers();
 
-    // Doanh thu tính trên tổng các hóa đơn
-    const totalRevenue = invoices.reduce((sum, inv) => sum + (Number(inv.totalAmount) || 0), 0);
-    
-    return {
-      totalRevenue: totalRevenue.toLocaleString('vi-VN') + ' VND',
-      orderCount: orders.length,
-      customerCount: customers.length,
-      activeQuotes: 12 
-    };
+      let quotes = (activeUserID && currentUser?.roleID === 2 && !options.ignoreUserFilter) 
+        ? apiQuotes.filter(q => Number(q.userID) === Number(activeUserID))
+        : apiQuotes;
+
+      // ─── LỌC THEO THỜI GIAN ────────────────────────────────────────────────
+      if (timeframe && timeframe !== 'all') {
+        const { filterDate, filterWeek, filterYear, selectedDay, filterYearsCount } = options;
+        const now = new Date();
+
+        quotes = quotes.filter(q => {
+          const d = new Date(q.createAt);
+          if (isNaN(d.getTime())) return false;
+
+          if (timeframe === 'daily') {
+            const [y, m] = filterDate.split('-').map(Number);
+            return d.getFullYear() === y && (d.getMonth() + 1) === m && d.getDate() === selectedDay;
+          }
+          if (timeframe === 'weekly') {
+            const [y, w] = filterWeek.split('-W').map(Number);
+            const getWeek = (date) => {
+              const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+              const dayNum = d.getUTCDay() || 7;
+              d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+              const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+              return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+            };
+            return d.getFullYear() === y && getWeek(d) === w;
+          }
+          if (timeframe === 'monthly') return d.getFullYear() === filterYear;
+          if (timeframe === 'yearly') return d.getFullYear() > (now.getFullYear() - filterYearsCount);
+          return true;
+        });
+      }
+
+      return quotes.map(q => {
+        const customer = customers.find(c => c.customerID === q.customerID);
+        return {
+          ...q,
+          displayID: `QUO-${q.quotationID.toString().padStart(3, '0')}`,
+          customerName: customer ? (customer.companyName || `${customer.lastName} ${customer.firstName}`) : 'Khách hàng lẻ',
+          customerEmail: customer ? customer.email : 'N/A',
+          customerGroup: customer ? (customer.status === 'ACTIVE' ? 'VIP MEMBER' : 'STANDARD') : 'STANDARD',
+          date: q.createAt ? new Date(q.createAt).toLocaleDateString('vi-VN') : 'N/A'
+        };
+      }).sort((a, b) => {
+        const dateA = new Date(a.createAt);
+        const dateB = new Date(b.createAt);
+        if (dateB.getTime() !== dateA.getTime()) {
+          return dateB - dateA;
+        }
+        return b.quotationID - a.quotationID;
+      });
+    }
+    const response = await api.get('/api/quotations', { params: { userID, timeframe, ...options } });
+    return response.data;
   },
 
-  // Giả lập tạo khách hàng mới
+  // Lấy thống kê Dashboard (Lọc theo nhân viên và thời gian)
+  getDashboardStats: async (userID, timeframe, options = {}) => {
+    if (USE_MOCK) {
+      const currentUser = getCurrentUser();
+      const activeUserID = userID || currentUser?.userID;
+      
+      const allOrders = [...dbData.orders, ...getLocalOrders()];
+      
+      // 1. Lọc đơn hàng và báo giá của nhân viên
+      let userOrders = activeUserID 
+        ? allOrders.filter(o => Number(o.userID) === Number(activeUserID)) 
+        : allOrders;
+      
+      const allQuotes = dbData.quotations || [];
+      let userQuotes = activeUserID 
+        ? allQuotes.filter(q => Number(q.userID) === Number(activeUserID)) 
+        : allQuotes;
+      
+      // 2. Phân loại đơn hàng theo thời gian
+      let monthOrders = [];
+      let selectedDayOrders = [];
+      let selectedDayQuotes = [];
+
+      const { filterDate, filterWeek, filterYear, selectedDay, filterYearsCount } = options;
+      const now = new Date();
+
+      if (timeframe === 'daily') {
+        const [y, m] = filterDate.split('-').map(Number);
+        monthOrders = userOrders.filter(o => {
+          const d = new Date(o.orderDate || o.date);
+          return !isNaN(d.getTime()) && d.getFullYear() === y && (d.getMonth() + 1) === m;
+        });
+        selectedDayOrders = monthOrders.filter(o => {
+          const d = new Date(o.orderDate || o.date);
+          return d.getDate() === selectedDay;
+        });
+        selectedDayQuotes = userQuotes.filter(q => {
+          const d = new Date(q.createAt);
+          return !isNaN(d.getTime()) && d.getFullYear() === y && (d.getMonth() + 1) === m && d.getDate() === selectedDay;
+        });
+      } else {
+        selectedDayOrders = userOrders.filter(o => {
+          const d = new Date(o.orderDate || o.date);
+          if (isNaN(d.getTime())) return false;
+
+          if (timeframe === 'weekly') {
+            const [y, w] = filterWeek.split('-W').map(Number);
+            const getWeek = (date) => {
+              const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+              const dayNum = d.getUTCDay() || 7;
+              d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+              const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+              return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+            };
+            return d.getFullYear() === y && getWeek(d) === w;
+          }
+          if (timeframe === 'monthly') return d.getFullYear() === filterYear;
+          if (timeframe === 'yearly') return d.getFullYear() > (now.getFullYear() - filterYearsCount);
+          return true;
+        });
+
+        selectedDayQuotes = userQuotes.filter(q => {
+          const d = new Date(q.createAt);
+          if (isNaN(d.getTime())) return false;
+
+          if (timeframe === 'weekly') {
+            const [y, w] = filterWeek.split('-W').map(Number);
+            const getWeek = (date) => {
+              const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+              const dayNum = d.getUTCDay() || 7;
+              d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+              const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+              return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+            };
+            return d.getFullYear() === y && getWeek(d) === w;
+          }
+          if (timeframe === 'monthly') return d.getFullYear() === filterYear;
+          if (timeframe === 'yearly') return d.getFullYear() > (now.getFullYear() - filterYearsCount);
+          return true;
+        });
+        monthOrders = selectedDayOrders;
+      }
+
+      // 3. Định nghĩa công thức tính giá trị hiển thị (Đồng bộ: Gốc + 10% VAT)
+      const getDisplayValue = (order) => (Number(order.totalAmount) || 0) * 1.1;
+
+      // 4. Helper tính toán chỉ số cho một tập hợp đơn hàng
+      const calculatePeriodStats = (orders) => {
+        const valid = orders.filter(o => o.orderStatus !== 'CANCELLED');
+        const revenue = valid.reduce((sum, o) => sum + getDisplayValue(o), 0);
+        const ordersCount = valid.length;
+        const customers = new Set(orders.map(o => o.customerID)).size;
+        return { revenue, ordersCount, customers };
+      };
+
+      // 5. Xác định đơn hàng và báo giá kỳ trước để so sánh tăng trưởng
+      let previousPeriodOrders = [];
+      let previousPeriodQuotes = [];
+      let comparisonLabel = "";
+
+      if (timeframe === 'daily') {
+        const [y, m] = filterDate.split('-').map(Number);
+        const prevDayDate = new Date(y, m - 1, selectedDay);
+        prevDayDate.setDate(prevDayDate.getDate() - 1);
+        
+        previousPeriodOrders = userOrders.filter(o => {
+          const d = new Date(o.orderDate || o.date);
+          return !isNaN(d.getTime()) && 
+                 d.getFullYear() === prevDayDate.getFullYear() && 
+                 (d.getMonth() + 1) === (prevDayDate.getMonth() + 1) && 
+                 d.getDate() === prevDayDate.getDate();
+        });
+
+        previousPeriodQuotes = userQuotes.filter(q => {
+          const d = new Date(q.createAt);
+          return !isNaN(d.getTime()) && 
+                 d.getFullYear() === prevDayDate.getFullYear() && 
+                 (d.getMonth() + 1) === (prevDayDate.getMonth() + 1) && 
+                 d.getDate() === prevDayDate.getDate();
+        });
+        comparisonLabel = "So với hôm qua";
+      } else if (timeframe === 'weekly') {
+        const [y, w] = filterWeek.split('-W').map(Number);
+        let prevY = y, prevW = w - 1;
+        if (prevW === 0) { prevY--; prevW = 52; } // Giả định đơn giản 52 tuần
+
+        previousPeriodOrders = userOrders.filter(o => {
+          const d = new Date(o.orderDate || o.date);
+          const getWeek = (date) => {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+          };
+          return d.getFullYear() === prevY && getWeek(d) === prevW;
+        });
+
+        previousPeriodQuotes = userQuotes.filter(q => {
+          const d = new Date(q.createAt);
+          const getWeek = (date) => {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+          };
+          return d.getFullYear() === prevY && getWeek(d) === prevW;
+        });
+        comparisonLabel = "So với tuần trước";
+      } else if (timeframe === 'monthly') {
+        previousPeriodOrders = userOrders.filter(o => {
+          const d = new Date(o.orderDate || o.date);
+          return d.getFullYear() === (filterYear - 1);
+        });
+        previousPeriodQuotes = userQuotes.filter(q => {
+          const d = new Date(q.createAt);
+          return d.getFullYear() === (filterYear - 1);
+        });
+        comparisonLabel = "So với năm trước";
+      } else if (timeframe === 'yearly') {
+        const yearsCount = filterYearsCount || 5;
+        const currentRangeStart = now.getFullYear() - yearsCount;
+        const prevRangeStart = currentRangeStart - yearsCount;
+        previousPeriodOrders = userOrders.filter(o => {
+          const d = new Date(o.orderDate || o.date);
+          return d.getFullYear() > prevRangeStart && d.getFullYear() <= currentRangeStart;
+        });
+        previousPeriodQuotes = userQuotes.filter(q => {
+          const d = new Date(q.createAt);
+          return d.getFullYear() > prevRangeStart && d.getFullYear() <= currentRangeStart;
+        });
+        comparisonLabel = `So với ${yearsCount} năm trước đó`;
+      }
+
+      // 6. Tính toán chỉ số hiện tại và kỳ trước
+      const currentStats = calculatePeriodStats(selectedDayOrders);
+      const prevStats = calculatePeriodStats(previousPeriodOrders);
+
+      const calculateGrowth = (curr, prev) => {
+        if (prev === 0) return { percent: curr > 0 ? "100" : "0", isUp: curr > 0 };
+        const p = ((curr - prev) / prev) * 100;
+        return { 
+          percent: Math.abs(p).toFixed(1), 
+          isUp: p >= 0,
+          raw: p
+        };
+      };
+
+      const revenueGrowth = calculateGrowth(currentStats.revenue, prevStats.revenue);
+      const orderGrowth = calculateGrowth(currentStats.ordersCount, prevStats.ordersCount);
+      const customerGrowth = calculateGrowth(currentStats.customers, prevStats.customers);
+      const quoteGrowth = calculateGrowth(selectedDayQuotes.length, previousPeriodQuotes.length);
+
+      const totalRevenue = currentStats.revenue;
+      const activeOrdersCount = currentStats.ordersCount;
+      const customerCount = currentStats.customers;
+      const activeQuotesCount = selectedDayQuotes.length;
+
+      // 5. Tính doanh thu cho biểu đồ (Dựa trên timeframe)
+      // Với 'daily': dùng monthOrders (đơn trong tháng) để vẽ heatmap
+      // Với 'weekly/monthly/yearly': dùng toàn bộ userOrders để vẽ biểu đồ lịch sử
+      const allValidUserOrders = userOrders.filter(o => o.orderStatus !== 'CANCELLED');
+      const validOrdersForChart = timeframe === 'daily'
+        ? monthOrders.filter(o => o.orderStatus !== 'CANCELLED')
+        : allValidUserOrders;
+      let revenueChart = [];
+      if (timeframe === 'monthly' || timeframe === 'all') {
+        const targetYear = timeframe === 'monthly' ? options.filterYear : new Date().getFullYear();
+        revenueChart = Array(12).fill(0).map((_, i) => ({
+          name: `Th.${i + 1}`,
+          revenue: 0
+        }));
+        validOrdersForChart.forEach(o => {
+          const d = new Date(o.orderDate || o.date);
+          if (d.getFullYear() === targetYear) {
+            revenueChart[d.getMonth()].revenue += getDisplayValue(o);
+          }
+        });
+      } else if (timeframe === 'yearly') {
+        const yearsCount = options.filterYearsCount || 5;
+        const currentYear = new Date().getFullYear();
+        revenueChart = Array(yearsCount).fill(0).map((_, i) => ({
+          name: `${currentYear - yearsCount + i + 1}`,
+          revenue: 0
+        }));
+        validOrdersForChart.forEach(o => {
+          const d = new Date(o.orderDate || o.date);
+          const yearIndex = d.getFullYear() - (currentYear - yearsCount + 1);
+          if (yearIndex >= 0 && yearIndex < yearsCount) {
+            revenueChart[yearIndex].revenue += getDisplayValue(o);
+          }
+        });
+      } else if (timeframe === 'weekly') {
+        const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
+        revenueChart = days.map(d => ({ name: d, revenue: 0 }));
+        validOrdersForChart.forEach(o => {
+          const d = new Date(o.orderDate || o.date);
+          let dayIdx = d.getDay() - 1;
+          if (dayIdx === -1) dayIdx = 6; // CN
+          revenueChart[dayIdx].revenue += getDisplayValue(o);
+        });
+      } else if (timeframe === 'daily') {
+        const [y, m] = options.filterDate.split('-').map(Number);
+        const daysInMonth = new Date(y, m, 0).getDate();
+        revenueChart = Array.from({ length: daysInMonth }, (_, i) => ({ 
+          day: i + 1, 
+          name: `Ngày ${i + 1}`, 
+          revenue: 0,
+          orderCount: 0
+        }));
+        validOrdersForChart.forEach(o => {
+          const d = new Date(o.orderDate || o.date);
+          const dayIdx = d.getDate() - 1;
+          if (dayIdx >= 0 && dayIdx < daysInMonth) {
+            revenueChart[dayIdx].revenue += getDisplayValue(o);
+            revenueChart[dayIdx].orderCount += 1;
+          }
+        });
+      }
+
+      return {
+        totalRevenue,
+        revenueGrowth: { ...revenueGrowth, prevValue: prevStats.revenue, label: comparisonLabel },
+        activeOrders: activeOrdersCount,
+        orderGrowth: { ...orderGrowth, prevValue: prevStats.ordersCount, label: comparisonLabel },
+        customerCount,
+        customerGrowth: { ...customerGrowth, prevValue: prevStats.customers, label: comparisonLabel },
+        activeQuotes: activeQuotesCount,
+        quoteGrowth: { ...quoteGrowth, prevValue: previousPeriodQuotes.length, label: comparisonLabel },
+        kpiProgress: Math.round(Math.min(100, (totalRevenue / 1000000000) * 100)),
+        targetRevenue: 1000000000,
+        revenueChart
+      };
+    }
+    const response = await api.get('/api/sales/dashboard/stats', { params: { userID, timeframe, ...options } });
+    return response.data;
+  },
+
+  // Tạo đơn hàng mới
+  createOrder: async (orderData) => {
+    if (USE_MOCK) {
+      const currentUser = getCurrentUser();
+      const local = getLocalOrders();
+      const apiOrders = dbData.orders || [];
+      const all = [...local, ...apiOrders];
+      const maxId = all.reduce((max, o) => Math.max(max, Number(o.orderID) || 0), 0);
+      
+      const newOrder = {
+        ...orderData,
+        orderID: maxId + 1,
+        userID: orderData.userID || currentUser?.userID || 1, // Gán userID người tạo
+        orderDate: new Date().toISOString().split('T')[0],
+        orderStatus: orderData.orderStatus || 'PENDING',
+        paidAmount: orderData.paidAmount || 0
+      };
+
+      localStorage.setItem('added_orders', JSON.stringify([newOrder, ...local]));
+      return newOrder;
+    }
+    const response = await api.post('/api/orders', orderData);
+    return response.data;
+  },
+
+  // Tạo khách hàng mới
   createCustomer: async (customerData) => {
-    const local = getLocalCustomers();
-    const newCustomer = {
-      ...customerData,
-      customerID: Date.now(),
-      status: 'ACTIVE'
-    };
-    localStorage.setItem('added_customers', JSON.stringify([newCustomer, ...local]));
-    return newCustomer;
+    if (USE_MOCK) {
+      const local = getLocalCustomers();
+      const apiData = dbData.customers || [];
+      const deletedIds = JSON.parse(localStorage.getItem('deleted_customer_ids') || '[]');
+      
+      // Tập hợp tất cả ID từ danh sách local, api và cả những ID đã bị xóa để tránh trùng lặp
+      const allIds = [
+        ...local.map(c => Number(c.customerID) || 0),
+        ...apiData.map(c => Number(c.customerID) || 0),
+        ...deletedIds.map(Number)
+      ];
+      
+      const maxId = allIds.reduce((max, id) => Math.max(max, id), 0);
+
+      const newCustomer = {
+        ...customerData,
+        customerID: maxId + 1,
+        status: 'ACTIVE'
+      };
+      localStorage.setItem('added_customers', JSON.stringify([newCustomer, ...local]));
+      return newCustomer;
+    }
+    const response = await api.post('/customers', customerData);
+    return response.data;
+  },
+
+  // Xóa khách hàng
+  deleteCustomer: async (customerID) => {
+    if (USE_MOCK) {
+      const local = getLocalCustomers();
+      const updatedLocal = local.filter(c => Number(c.customerID) !== Number(customerID));
+      localStorage.setItem('added_customers', JSON.stringify(updatedLocal));
+      
+      const deletedIds = JSON.parse(localStorage.getItem('deleted_customer_ids') || '[]');
+      if (!deletedIds.includes(Number(customerID))) {
+        deletedIds.push(Number(customerID));
+        localStorage.setItem('deleted_customer_ids', JSON.stringify(deletedIds));
+      }
+      return { success: true };
+    }
+    const response = await api.delete(`/customers/${customerID}`);
+    return response.data;
+  },
+
+  // Cập nhật thông tin khách hàng
+  updateCustomer: async (customerID, customerData) => {
+    if (USE_MOCK) {
+      const local = getLocalCustomers();
+      const updatedLocal = local.map(c => 
+        Number(c.customerID) === Number(customerID) ? { ...c, ...customerData } : c
+      );
+      const isOriginal = !local.some(c => Number(c.customerID) === Number(customerID));
+      if (isOriginal) {
+        const originalCustomer = dbData.customers.find(c => Number(c.customerID) === Number(customerID));
+        if (originalCustomer) {
+          const updatedOriginal = { ...originalCustomer, ...customerData };
+          localStorage.setItem('added_customers', JSON.stringify([updatedOriginal, ...local]));
+        }
+      } else {
+        localStorage.setItem('added_customers', JSON.stringify(updatedLocal));
+      }
+      return { success: true };
+    }
+    const response = await api.put(`/customers/${customerID}`, customerData);
+    return response.data;
+  },
+
+  // Lấy danh sách hóa đơn
+  getInvoices: async () => {
+    if (USE_MOCK) return getAllCurrentInvoices();
+    const response = await api.get('/api/invoices');
+    return response.data;
+  },
+
+  // Lấy danh sách thanh toán
+  getPayments: async () => {
+    if (USE_MOCK) {
+      const local = JSON.parse(localStorage.getItem('added_payments') || '[]');
+      const apiData = dbData.payments || [];
+      const localIds = new Set(local.map(p => p.paymentID));
+      return [...local, ...apiData.filter(p => !localIds.has(p.paymentID))];
+    }
+    const response = await api.get('/api/payments');
+    return response.data;
   }
 };
 
 export default salesService;
+

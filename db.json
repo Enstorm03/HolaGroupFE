@@ -1,0 +1,122 @@
+{
+  "roles": [
+    { "roleID": 1, "roleName": "Kế toán" },
+    { "roleID": 2, "roleName": "Nhân viên bán hàng" },
+    { "roleID": 3, "roleName": "Quản trị viên" },
+    { "roleID": 4, "roleName": "Nhân viên kho" }
+  ],
+  "users": [
+    { "userID": 1, "lastName": "Nguyễn Văn", "firstName": "An", "dateOfBirth": "1990-01-01", "phoneNumber": "0901112222", "email": "sale@gmail.com", "address": "TP.HCM", "roleID": 2 },
+    { "userID": 3, "lastName": "Võ", "firstName": "Huy", "dateOfBirth": "1988-12-25", "phoneNumber": "0933445566", "email": "accounting@gmail.com", "address": "Quận 1, TP.HCM", "roleID": 1 },
+    { "userID": 4, "lastName": "Lê Văn", "firstName": "Kho", "dateOfBirth": "1995-03-15", "phoneNumber": "0905556666", "email": "warehouse@gmail.com", "address": "Bình Dương", "roleID": 4 },
+    { "userID": 5, "lastName": "Phạm", "firstName": "Admin", "dateOfBirth": "1985-07-20", "phoneNumber": "0907778888", "email": "admin@gmail.com", "address": "TP.HCM", "roleID": 3 },
+    { "userID": 6, "lastName": "Trần Thị", "firstName": "Bình", "dateOfBirth": "1992-05-10", "phoneNumber": "0912223344", "email": "binh.tran@gmail.com", "address": "Quận 3, TP.HCM", "roleID": 2 },
+    { "userID": 7, "lastName": "Lê Hoàng", "firstName": "Cường", "dateOfBirth": "1994-11-20", "phoneNumber": "0945556677", "email": "cuong.le@gmail.com", "address": "Quận 10, TP.HCM", "roleID": 2 },
+    { "userID": 8, "lastName": "Ngô Gia", "firstName": "Bảo", "dateOfBirth": "1993-08-15", "phoneNumber": "0966778899", "email": "bao.ngo@gmail.com", "address": "Quận 7, TP.HCM", "roleID": 2 }
+  ],
+  "customers": [
+    { "customerID": 1, "firstName": "Kiến Trúc Việt", "lastName": "Công ty CP", "address": "123 Đường Lê Lợi, Quận 1, TP.HCM", "phoneNumber": "0901234567", "email": "ktviet@email.com", "companyName": "Công ty CP Kiến Trúc Việt", "status": "ACTIVE" },
+    { "customerID": 2, "firstName": "Hola miền Nam", "lastName": "Đại lý", "address": "456 Nguyễn Hữu Thọ, Quận 7, TP.HCM", "phoneNumber": "0988776655", "email": "holamn@email.com", "companyName": "Đại lý Hola miền Nam", "status": "ACTIVE" },
+    { "customerID": 3, "firstName": "Việt Thắng", "lastName": "Tập đoàn Dệt may", "address": "KCN Linh Trung, Thủ Đức, TP.HCM", "phoneNumber": "02838445566", "email": "vietthang@email.com", "companyName": "Tập đoàn Dệt may Việt Thắng", "status": "INACTIVE" }
+  ],
+  "orders": [
+    { "orderID": 100, "paymentTerm": "30 days", "paymentMethod": "CASH", "orderStatus": "DELIVERED", "orderDate": "2026-01-05", "deliveryDate": "2026-01-05", "customerID": 3, "userID": 1, "totalAmount": 50000000, "taxAmount": 5000000, "discountAmount": 0, "paidAmount": 50000000 },
+    { "orderID": 101, "paymentTerm": "30 days", "paymentMethod": "TRANSFER", "orderStatus": "DELIVERED", "orderDate": "2026-01-10", "deliveryDate": "2026-01-15", "customerID": 1, "userID": 1, "totalAmount": 200000000, "taxAmount": 20000000, "discountAmount": 0, "paidAmount": 12500000 },
+    { "orderID": 102, "paymentTerm": "COD", "paymentMethod": "CASH", "orderStatus": "DELIVERED", "orderDate": "2026-02-10", "deliveryDate": "2026-02-10", "customerID": 2, "userID": 6, "totalAmount": 12500000, "taxAmount": 1250000, "discountAmount": 0, "paidAmount": 12500000 },
+    { "orderID": 103, "paymentTerm": "30 days", "paymentMethod": "TRANSFER", "orderStatus": "PENDING", "orderDate": "2026-05-10", "deliveryDate": null, "customerID": 1, "userID": 7, "totalAmount": 450000000, "taxAmount": 45000000, "discountAmount": 5000000, "paidAmount": 0 },
+    { "orderID": 104, "paymentTerm": "CASH", "paymentMethod": "CASH", "orderStatus": "DELIVERED", "orderDate": "2026-05-11", "deliveryDate": "2026-05-11", "customerID": 2, "userID": 8, "totalAmount": 85000000, "taxAmount": 8500000, "discountAmount": 0, "paidAmount": 85000000 },
+    { "orderID": 105, "paymentTerm": "30 days", "paymentMethod": "TRANSFER", "orderStatus": "DELIVERED", "orderDate": "2026-05-12", "deliveryDate": "2026-05-14", "customerID": 1, "userID": 1, "totalAmount": 120000000, "taxAmount": 12000000, "discountAmount": 0, "paidAmount": 120000000 },
+    { "orderID": 106, "paymentTerm": "COD", "paymentMethod": "CASH", "orderStatus": "DELIVERED", "orderDate": "2026-05-12", "deliveryDate": "2026-05-12", "customerID": 3, "userID": 6, "totalAmount": 45000000, "taxAmount": 4500000, "discountAmount": 0, "paidAmount": 45000000 },
+    { "orderID": 107, "paymentTerm": "30 days", "paymentMethod": "TRANSFER", "orderStatus": "PENDING", "orderDate": "2026-05-13", "deliveryDate": null, "customerID": 2, "userID": 7, "totalAmount": 300000000, "taxAmount": 30000000, "discountAmount": 0, "paidAmount": 0 },
+    { "orderID": 108, "paymentTerm": "CASH", "paymentMethod": "CASH", "orderStatus": "DELIVERED", "orderDate": "2026-05-13", "deliveryDate": "2026-05-13", "customerID": 1, "userID": 8, "totalAmount": 65000000, "taxAmount": 6500000, "discountAmount": 0, "paidAmount": 65000000 },
+    { "orderID": 109, "paymentTerm": "30 days", "paymentMethod": "TRANSFER", "orderStatus": "DELIVERED", "orderDate": "2026-05-14", "deliveryDate": "2026-05-16", "customerID": 3, "userID": 1, "totalAmount": 150000000, "taxAmount": 15000000, "discountAmount": 0, "paidAmount": 150000000 },
+    { "orderID": 110, "paymentTerm": "COD", "paymentMethod": "CASH", "orderStatus": "DELIVERED", "orderDate": "2026-05-14", "deliveryDate": "2026-05-14", "customerID": 1, "userID": 6, "totalAmount": 95000000, "taxAmount": 9500000, "discountAmount": 0, "paidAmount": 95000000 },
+    { "orderID": 111, "paymentTerm": "30 days", "paymentMethod": "TRANSFER", "orderStatus": "PENDING", "orderDate": "2026-05-14", "deliveryDate": null, "customerID": 2, "userID": 1, "totalAmount": 280000000, "taxAmount": 28000000, "discountAmount": 0, "paidAmount": 0 },
+    { "orderID": 112, "paymentTerm": "CASH", "paymentMethod": "CASH", "orderStatus": "DELIVERED", "orderDate": "2026-05-14", "deliveryDate": "2026-05-14", "customerID": 3, "userID": 7, "totalAmount": 42000000, "taxAmount": 4200000, "discountAmount": 0, "paidAmount": 42000000 }
+  ],
+  "invoices": [
+    { "invoiceID": 0, "invoiceDate": "2026-01-05", "dueDate": "2026-02-05", "totalAmount": 55000000, "paidAmount": 55000000, "status": "PAID", "createAt": "2026-01-05", "orderID": 100, "userID": 1 },
+    { "invoiceID": 1, "invoiceDate": "2026-01-10", "dueDate": "2026-02-10", "totalAmount": 220000000, "paidAmount": 0, "status": "OVERDUE", "createAt": "2026-01-10", "orderID": 101, "userID": 1 },
+    { "invoiceID": 2, "invoiceDate": "2026-02-10", "dueDate": "2026-02-20", "totalAmount": 13750000, "paidAmount": 13750000, "status": "PAID", "createAt": "2026-02-10", "orderID": 102, "userID": 6 },
+    { "invoiceID": 3, "invoiceDate": "2026-05-10", "dueDate": "2026-06-10", "totalAmount": 495000000, "paidAmount": 150000000, "status": "PARTIAL", "createAt": "2026-05-10", "orderID": 103, "userID": 7 },
+    { "invoiceID": 4, "invoiceDate": "2026-05-11", "dueDate": "2026-05-20", "totalAmount": 93500000, "paidAmount": 93500000, "status": "PAID", "createAt": "2026-05-11", "orderID": 104, "userID": 8 },
+    { "invoiceID": 5, "invoiceDate": "2026-05-12", "dueDate": "2026-06-12", "totalAmount": 132000000, "paidAmount": 132000000, "status": "PAID", "createAt": "2026-05-12", "orderID": 105, "userID": 1 },
+    { "invoiceID": 6, "invoiceDate": "2026-05-12", "dueDate": "2026-05-20", "totalAmount": 49500000, "paidAmount": 49500000, "status": "PAID", "createAt": "2026-05-12", "orderID": 106, "userID": 6 },
+    { "invoiceID": 7, "invoiceDate": "2026-05-13", "dueDate": "2026-06-13", "totalAmount": 75000000, "paidAmount": 0, "status": "PENDING", "createAt": "2026-05-13", "orderID": 107, "userID": 7 },
+    { "invoiceID": 8, "invoiceDate": "2026-05-13", "dueDate": "2026-05-25", "totalAmount": 71500000, "paidAmount": 71500000, "status": "PAID", "createAt": "2026-05-13", "orderID": 108, "userID": 8 },
+    { "invoiceID": 9, "invoiceDate": "2026-05-14", "dueDate": "2026-06-14", "totalAmount": 165000000, "paidAmount": 165000000, "status": "PAID", "createAt": "2026-05-14", "orderID": 109, "userID": 1 },
+    { "invoiceID": 10, "invoiceDate": "2026-05-14", "dueDate": "2026-05-25", "totalAmount": 104500000, "paidAmount": 104500000, "status": "PAID", "createAt": "2026-05-14", "orderID": 110, "userID": 6 },
+    { "invoiceID": 11, "invoiceDate": "2026-05-14", "dueDate": "2026-05-12", "totalAmount": 35000000, "paidAmount": 0, "status": "OVERDUE", "createAt": "2026-05-14", "orderID": 111, "userID": 1 },
+    { "invoiceID": 12, "invoiceDate": "2026-05-14", "dueDate": "2026-05-15", "totalAmount": 46200000, "paidAmount": 46200000, "status": "PAID", "createAt": "2026-05-14", "orderID": 112, "userID": 7 }
+  ],
+  "payments": [
+    { "paymentID": 0, "amount": 55000000, "paymentMethod": "CASH", "paymentDate": "2026-01-06", "status": "COMPLETED", "invoiceID": 0 },
+    { "paymentID": 1, "amount": 13750000, "paymentMethod": "CASH", "paymentDate": "2026-02-11", "status": "COMPLETED", "invoiceID": 2 },
+    { "paymentID": 2, "amount": 100000000, "paymentMethod": "TRANSFER", "paymentDate": "2026-05-10", "status": "COMPLETED", "invoiceID": 3 },
+    { "paymentID": 3, "amount": 50000000, "paymentMethod": "CASH", "paymentDate": "2026-05-11", "status": "COMPLETED", "invoiceID": 3 }
+  ],
+  "quarterly_reports": [
+    {
+      "reportID": 1, "quarter": 1, "year": 2026,
+      "title": "Báo cáo Thuế Quý 1/2026",
+      "status": "APPROVED",
+      "totalRevenue": 4250000000,
+      "vatOut": 425000000,
+      "vatDeductible": 120000000,
+      "createdAt": "2026-04-01",
+      "note": "Báo cáo tuân thủ thông tư 80/2021/TT-BTC.",
+      "breakdown": [
+        { "label": "Thuế GTGT Hàng hóa", "value": "245.000.000" },
+        { "label": "Thuế GTGT Dịch vụ", "value": "180.000.000" },
+        { "label": "Chi phí khấu trừ", "value": "120.000.000" },
+        { "label": "Dự phòng rủi ro", "value": "45.000.000" }
+      ],
+      "timeline": [
+        { "step": "Khởi tạo báo cáo", "time": "08:30 01/04", "by": "Hệ thống ERP", "done": true },
+        { "step": "Kế toán tổng hợp soát xét", "time": "14:15 01/04", "by": "Nguyễn Văn An", "done": true },
+        { "step": "Kế toán trưởng phê duyệt", "time": "16:45 01/04", "by": "Võ Huy", "done": true },
+        { "step": "Gửi cơ quan thuế", "time": "Chờ thực hiện", "by": "Quản trị viên", "done": false }
+      ]
+    }
+  ],
+  "orderItems": [
+    { "orderID": 100, "productID": 1, "quantity": 100, "unitPrice": 320000, "discount": 0 },
+    { "orderID": 100, "productID": 2, "quantity": 50, "unitPrice": 450000, "discount": 0 },
+    { "orderID": 101, "productID": 1, "quantity": 500, "unitPrice": 320000, "discount": 0 },
+    { "orderID": 101, "productID": 3, "quantity": 20, "unitPrice": 2000000, "discount": 0 },
+    { "orderID": 102, "productID": 2, "quantity": 25, "unitPrice": 450000, "discount": 0 },
+    { "orderID": 103, "productID": 1, "quantity": 1000, "unitPrice": 320000, "discount": 0 },
+    { "orderID": 103, "productID": 3, "quantity": 65, "unitPrice": 2000000, "discount": 0 },
+    { "orderID": 104, "productID": 4, "quantity": 460, "unitPrice": 185000, "discount": 0 },
+    { "orderID": 105, "productID": 1, "quantity": 375, "unitPrice": 320000, "discount": 0 },
+    { "orderID": 106, "productID": 2, "quantity": 100, "unitPrice": 450000, "discount": 0 },
+    { "orderID": 107, "productID": 3, "quantity": 150, "unitPrice": 2000000, "discount": 0 },
+    { "orderID": 108, "productID": 4, "quantity": 351, "unitPrice": 185000, "discount": 0 },
+    { "orderID": 109, "productID": 1, "quantity": 468, "unitPrice": 320000, "discount": 0 },
+    { "orderID": 110, "productID": 2, "quantity": 211, "unitPrice": 450000, "discount": 0 },
+    { "orderID": 111, "productID": 3, "quantity": 140, "unitPrice": 2000000, "discount": 0 },
+    { "orderID": 112, "productID": 4, "quantity": 227, "unitPrice": 185000, "discount": 0 }
+  ],
+  "quotations": [
+    { "quotationID": 1, "customerID": 1, "userID": 1, "totalAmount": 150000000, "status": "PENDING", "createAt": "2026-05-10" },
+    { "quotationID": 2, "customerID": 2, "userID": 1, "totalAmount": 45000000, "status": "SENT", "createAt": "2026-05-12" },
+    { "quotationID": 3, "customerID": 3, "userID": 6, "totalAmount": 80000000, "status": "APPROVED", "createAt": "2026-05-14" }
+  ],
+  "categories": [
+    { "categoryID": 1, "categoryName": "Gạch men & Đá", "priceListItemID": 1 },
+    { "categoryID": 2, "categoryName": "Thiết bị vệ sinh", "priceListItemID": 2 },
+    { "categoryID": 3, "categoryName": "Gỗ & Sàn", "priceListItemID": 3 }
+  ],
+  "products": [
+    { "productID": 1, "productName": "Gạch men cao cấp 60x60", "salePrice": 320000, "unit": "m2", "status": "ACTIVE", "categoryID": 1 },
+    { "productID": 2, "productName": "Đá hoa cương đen Huế", "salePrice": 450000, "unit": "m2", "status": "ACTIVE", "categoryID": 1 },
+    { "productID": 3, "productName": "Bồn cầu thông minh Hola-X1", "salePrice": 2000000, "unit": "bộ", "status": "ACTIVE", "categoryID": 2 },
+    { "productID": 4, "productName": "Sàn gỗ công nghiệp 8mm", "salePrice": 185000, "unit": "m2", "status": "ACTIVE", "categoryID": 3 }
+  ],
+  "stats": {
+    "totalBalance": "2.500.000.000",
+    "revenue": "2.083.950.000",
+    "expense": "450.000.000",
+    "pending": "350.000.000"
+  }
+}

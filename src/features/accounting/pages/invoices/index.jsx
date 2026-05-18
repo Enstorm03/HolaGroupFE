@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/accounting.css';
 import accountingService from '../../services/accountingService';
-import dbData from '../../mockdata/db.json';
+import dbData from '../../../../../db.json';
 import { exportToPDF } from '../../utils/exportUtils';
 import PrintableInvoiceTemplate from '../../components/Print/PrintableInvoiceTemplate';
 
@@ -355,8 +355,9 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
   };
 
   const subtotal = (invoice.items || []).reduce((sum, item) => sum + (item.quantity * (item.unitPrice || item.price || 0)), 0);
+  const taxAmount = subtotal * 0.1;
   const adjustment = (invoice.fees?.shipping || 0) + (invoice.fees?.handling || 0) + (invoice.fees?.insurance || 0) - (invoice.fees?.discount || 0);
-  const finalTotal = subtotal + adjustment;
+  const finalTotal = subtotal + taxAmount + adjustment;
   const paid = invoice.paidAmount || 0;
   const remaining = Math.max(0, finalTotal - paid);
   const percent = Math.min(100, Math.round((paid / finalTotal) * 100)) || 0;
@@ -438,6 +439,17 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                       </p>
                     </div>
                   </div>
+                  <div className="space-y-4 p-6 rounded-3xl bg-slate-50/50 border border-slate-200">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-acc-text-light uppercase tracking-widest">
+                      <span aria-hidden="true" className="material-symbols-outlined text-xs">badge</span> Nhân viên bán hàng
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-black text-acc-text-main">
+                        {invoice.salespersonName || 'Không xác định'}
+                      </p>
+                      <p className="text-[10px] font-bold text-acc-primary uppercase tracking-widest">Phòng Kinh doanh</p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="md:col-span-3 space-y-4 p-8 rounded-3xl bg-acc-primary/5 border border-acc-primary/10 relative overflow-hidden group flex flex-col justify-center">
@@ -517,6 +529,7 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoice }) => {
                 </div>
                 <div className="space-y-4 p-8 rounded-[2rem] bg-slate-900 text-white shadow-xl shadow-slate-200">
                   <div className="flex justify-between items-center text-xs opacity-60 font-medium"><span>Tạm tính</span><span>{subtotal.toLocaleString()} VND</span></div>
+                  <div className="flex justify-between items-center text-xs opacity-60 font-medium"><span>Thuế VAT (10%)</span><span>{taxAmount.toLocaleString()} VND</span></div>
                   {adjustment !== 0 && (
                     <div className="flex justify-between items-center text-xs opacity-60 font-medium font-italic"><span>Phí & Giảm giá</span><span>{adjustment > 0 ? '+' : ''}{adjustment.toLocaleString()} VND</span></div>
                   )}
@@ -605,7 +618,7 @@ const AdjustmentModal = ({ isOpen, onClose, invoice, onUpdate }) => {
           </div>
 
           {/* Form Content */}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-10 no-scrollbar acc-modal-scroll-area" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="acc-card flex-1 min-h-0 flex flex-col overflow-hidden p-4 sm:p-6 lg:p-10 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 no-scrollbar acc-modal-scroll-area" style={{ WebkitOverflowScrolling: 'touch' }}>
             <div className="space-y-8 sm:space-y-10 pb-16">
 
               {/* Fee Inputs Group */}
@@ -793,9 +806,13 @@ const ActionMenu = ({ invoice, onAdjust, onEdit, onDelete, onView, onOpenChange,
 const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title = "Hóa đơn", showToast }) => {
   const [formData, setFormData] = useState({
     customer: '', orderID: '', date: new Date().toISOString().split('T')[0], dueDate: '', notes: '',
-    paidAmount: 0, finalDueDate: '',
+    paidAmount: 0, finalDueDate: '', salesperson: '',
     items: [{ id: 1, name: '', quantity: 1, price: 0 }]
   });
+  
+  const [allOrders, setAllOrders] = useState([]);
+  const [availableOrders, setAvailableOrders] = useState([]);
+  const [currentInvoices, setCurrentInvoices] = useState([]);
 
   useEffect(() => {
     const toISODate = (dateStr) => {
@@ -809,6 +826,21 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
     };
 
     if (isOpen) {
+      // Tải tất cả đơn hàng và hóa đơn hiện có để lọc
+      const loadContext = async () => {
+        try {
+          const [orders, invoices] = await Promise.all([
+            accountingService.getOrders(),
+            accountingService.getInvoices()
+          ]);
+          setAllOrders(orders);
+          setCurrentInvoices(invoices);
+        } catch (err) {
+          console.error("Lỗi tải context:", err);
+        }
+      };
+      loadContext();
+
       if (initialData) {
         setFormData({
           customer: initialData.customerID || '',
@@ -818,7 +850,7 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
           notes: initialData.notes || '',
           paidAmount: initialData.paidAmount || 0,
           finalDueDate: toISODate(initialData.finalDueDate) || '',
-          salesperson: initialData.userID || '', // Lưu thông tin nhân viên bán hàng
+          salesperson: initialData.userID || '', 
           items: initialData.items ? initialData.items.map((it, idx) => ({ ...it, id: it.id || (Date.now() + idx) })) : [{ id: Date.now(), name: '', quantity: 1, unitPrice: 0 }]
         });
       } else {
@@ -827,11 +859,76 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
     }
   }, [isOpen, initialData]);
 
+  // Logic lọc đơn hàng khả dụng dựa trên nhân viên bán hàng
+  useEffect(() => {
+    if (formData.salesperson && !initialData) {
+      const salespersonID = Number(formData.salesperson);
+      // Tìm các hóa đơn đã tồn tại gắn với mã đơn hàng nào
+      const existingOrderIDs = currentInvoices.map(inv => String(inv.orderID));
+      
+      const filtered = allOrders.filter(order => {
+        const matchesUser = Number(order.userID) === salespersonID;
+        const noInvoice = !existingOrderIDs.includes(String(order.orderID));
+        return matchesUser && noInvoice;
+      });
+      
+      setAvailableOrders(filtered);
+    } else {
+      setAvailableOrders([]);
+    }
+  }, [formData.salesperson, allOrders, currentInvoices, initialData]);
+
+  // Tự động điền thông tin khi chọn đơn hàng
+  const handleOrderSelect = async (orderID) => {
+    if (!orderID) {
+      setFormData(prev => ({ ...prev, orderID: '', customer: '' }));
+      return;
+    }
+
+    const order = allOrders.find(o => String(o.orderID) === String(orderID));
+    if (order) {
+      try {
+        const allItems = await accountingService.getOrderItems();
+        const orderItems = allItems.filter(oi => String(oi.orderID) === String(orderID));
+        
+        const products = dbData.products || [];
+        const categories = dbData.categories || [];
+
+        const mappedItems = orderItems.map((oi, idx) => {
+          const product = products.find(p => p.productID === oi.productID);
+          return {
+            id: Date.now() + idx,
+            productID: oi.productID,
+            categoryID: product?.categoryID,
+            categoryName: categories.find(c => c.categoryID === product?.categoryID)?.categoryName || 'Sản phẩm',
+            name: product?.productName || oi.productName || 'Sản phẩm',
+            quantity: oi.quantity || 1,
+            unitPrice: oi.unitPrice || product?.salePrice || 0
+          };
+        });
+
+        setFormData(prev => ({
+          ...prev,
+          orderID: order.orderID,
+          customer: order.customerID,
+          items: mappedItems.length > 0 ? mappedItems : prev.items
+        }));
+      } catch (err) {
+        console.error("Lỗi lấy chi tiết đơn hàng:", err);
+        setFormData(prev => ({ ...prev, orderID: order.orderID, customer: order.customerID }));
+      }
+    }
+  };
+
   const addItem = () => { setFormData(prev => ({ ...prev, items: [...prev.items, { id: Date.now(), name: '', quantity: 1, unitPrice: 0, categoryID: null, productID: null }] })); };
   const removeItem = (id) => { if (formData.items.length > 1) { setFormData(prev => ({ ...prev, items: prev.items.filter(item => item.id !== id) })); } };
   const updateItem = (id, field, value) => { setFormData(prev => ({ ...prev, items: prev.items.map(item => item.id === id ? { ...item, [field]: value } : item) })); };
   const updateItemData = (id, data) => { setFormData(prev => ({ ...prev, items: prev.items.map(item => item.id === id ? { ...item, ...data } : item) })); };
-  const totalAmount = formData.items.reduce((sum, item) => sum + (Number(item.quantity || 0) * (Number(item.unitPrice || item.price || 0))), 0);
+  
+  // Tính tiền trước thuế, tiền thuế và tổng tiền
+  const subTotal = formData.items.reduce((sum, item) => sum + (Number(item.quantity || 0) * (Number(item.unitPrice || item.price || 0))), 0);
+  const taxAmount = subTotal * 0.1; // VAT 10%
+  const totalAmount = subTotal + taxAmount;
   const remaining = Math.max(0, totalAmount - formData.paidAmount);
 
   const [showErrorPopup, setShowErrorPopup] = useState(false);
@@ -947,7 +1044,31 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
                     ))}
                   </select>
                 </div>
-                <div className="space-y-2"><label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Mã đơn hàng <span className="text-rose-500">*</span></label><input type="text" value={formData.orderID} onChange={(e) => setFormData(prev => ({ ...prev, orderID: e.target.value }))} autoComplete="off" spellCheck={false} placeholder="Ví dụ: ORD-001" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-acc-primary/30 rounded-2xl py-3 px-5 text-sm font-black focus:ring-4 focus:ring-acc-primary/5 outline-none transition-all focus:bg-white placeholder:text-slate-300" /></div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-acc-text-main ml-1">Mã đơn hàng <span className="text-rose-500">*</span></label>
+                  {!initialData ? (
+                    <select 
+                      value={formData.orderID} 
+                      disabled={!formData.salesperson}
+                      onChange={(e) => handleOrderSelect(e.target.value)}
+                      className={`w-full bg-slate-50 border-2 border-slate-200 focus:border-acc-primary/30 rounded-2xl py-3 px-5 text-sm font-black outline-none transition-all focus:bg-white ${!formData.salesperson ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <option value="">{formData.salesperson ? 'Chọn đơn hàng chưa lập HĐ...' : 'Vui lòng chọn nhân viên trước'}</option>
+                      {availableOrders.map(order => (
+                        <option key={order.orderID} value={order.orderID}>
+                          {order.orderID} - Khách: {dbData.customers.find(c => c.customerID === order.customerID)?.companyName || 'Khách hàng lẻ'}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input 
+                      type="text" 
+                      value={formData.orderID} 
+                      readOnly
+                      className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl py-3 px-5 text-sm font-black text-slate-500 cursor-not-allowed outline-none" 
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1047,8 +1168,13 @@ const InvoiceFormModal = ({ isOpen, onClose, onSave, initialData = null, title =
 
           <div className="px-6 sm:px-8 py-5 sm:py-6 border-t border-slate-100 flex flex-row items-center justify-between bg-slate-50/50 sm:bg-slate-50/50 gap-4 shrink-0 acc-modal-mobile-taskbar">
             <div className="flex flex-col items-start w-full sm:w-auto">
-              <span className="text-[9px] font-black text-acc-text-main uppercase tracking-widest">Tổng hóa đơn</span>
-              <span className="text-lg sm:text-2xl font-black text-acc-primary tracking-tighter">{totalAmount.toLocaleString()} VND</span>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">
+                Tiền hàng: {subTotal.toLocaleString()} | VAT (10%): {taxAmount.toLocaleString()}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black text-acc-text-main uppercase tracking-widest">Tổng hóa đơn</span>
+                <span className="text-lg sm:text-2xl font-black text-acc-primary tracking-tighter">{totalAmount.toLocaleString()} VND</span>
+              </div>
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <button onClick={onClose} className="flex-1 sm:flex-none px-6 py-3.5 sm:py-3 text-[10px] font-black uppercase text-slate-500 transition-all hover:bg-slate-200 rounded-xl sm:rounded-2xl border border-slate-200 sm:border-none backdrop-blur-md">Hủy</button>
@@ -1316,9 +1442,16 @@ const InvoiceList = () => {
     let aValue, bValue;
 
     if (sortConfig.key === 'date') {
-      const dateA = new Date((a.date || '').split('/').reverse().join('-'));
-      const dateB = new Date((b.date || '').split('/').reverse().join('-'));
-      return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+      const dateA = new Date((a.date || '').split('/').reverse().join('-')).getTime();
+      const dateB = new Date((b.date || '').split('/').reverse().join('-')).getTime();
+      
+      if (dateA !== dateB) {
+        return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+      // Tie-breaker: Nếu cùng ngày, cái nào ID lớn hơn (mới hơn) thì lên trên (nếu đang desc)
+      const idA = Number(a.invoiceID) || 0;
+      const idB = Number(b.invoiceID) || 0;
+      return sortConfig.direction === 'asc' ? idA - idB : idB - idA;
     }
 
     if (sortConfig.key === 'invoiceID') {
@@ -1332,15 +1465,20 @@ const InvoiceList = () => {
       bValue = b[sortConfig.key] || '';
     }
 
-    // Nếu là string thì dùng natural sort
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      const comp = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
-      return sortConfig.direction === 'asc' ? comp : -comp;
+    if (aValue !== bValue) {
+      // Nếu là string thì dùng natural sort
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        const comp = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
+        return sortConfig.direction === 'asc' ? comp : -comp;
+      }
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     }
 
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
+    // Tie-breaker: ID
+    const idA = Number(a.invoiceID) || 0;
+    const idB = Number(b.invoiceID) || 0;
+    return sortConfig.direction === 'asc' ? idA - idB : idB - idA;
   });
 
   const SortIcon = ({ column }) => {
@@ -1406,7 +1544,7 @@ const InvoiceList = () => {
         </div>
       </div>
 
-      <div className="flex-1 bg-white rounded-none sm:rounded-[2rem] border-x-0 sm:border border-slate-200/60 shadow-xl flex flex-col overflow-hidden">
+      <div className="flex-1 bg-white rounded-none sm:rounded-[2rem] border-x-0 sm:border border-slate-200/60 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto no-scrollbar px-4 sm:px-0">
           <table className="w-full text-left border-collapse relative acc-responsive-table">
             <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-20">

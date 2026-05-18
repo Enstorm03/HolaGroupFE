@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import accountingService from '../../services/accountingService';
-import dbData from '../../mockdata/db.json';
+import dbData from '../../../../../db.json';
 import '../../styles/accounting.css';
 
 const InvoiceDetail = () => {
@@ -107,9 +107,12 @@ const InvoiceDetail = () => {
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Người phụ trách</p>
-                <h4 className="text-sm font-black text-acc-text-main leading-snug">Lê Minh Tuấn</h4>
-                <p className="text-[11px] text-acc-text-muted font-bold">P. Kế toán nội bộ</p>
+                <p className="text-[10px] font-black text-acc-text-light uppercase tracking-widest">Nhân viên kinh doanh</p>
+                <h4 className="text-sm font-black text-acc-text-main leading-snug">{invoice.salespersonName || 'Không xác định'}</h4>
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-[11px] text-acc-primary font-bold uppercase tracking-widest">Phòng Kinh doanh</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">Đơn hàng: <span className="text-acc-text-main" translate="no">{invoice.displayOrderID || invoice.orderID || 'N/A'}</span></p>
+                </div>
               </div>
             </div>
           </div>
@@ -137,8 +140,8 @@ const InvoiceDetail = () => {
                       <tr key={i} className="hover:bg-slate-50/50 transition-all duration-200 group">
                         <td className="px-6 py-5" data-label="Danh mục">
                           <div className="flex flex-col">
-                            <span className="text-[10px] text-acc-primary font-black uppercase tracking-widest mb-0.5 whitespace-nowrap block w-fit max-w-[150px] truncate">
-                             {item.categoryName || 'Danh mục'}
+                            <span className="text-[10px] text-acc-primary font-black uppercase tracking-widest px-2 py-1 bg-acc-primary/5 rounded-lg whitespace-nowrap block w-fit max-w-[150px] truncate">
+                              {item.categoryName || 'Sản phẩm'}
                             </span>
                           </div>
                         </td>

@@ -9,7 +9,34 @@ const SalesLayout = () => {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 relative">
+    <div className="sales-layout-root flex h-screen overflow-hidden bg-slate-50 relative">
+      <style>{`
+        @media (max-height: 600px) and (max-width: 1024px) {
+          .sales-layout-root {
+            height: auto !important;
+            min-height: 100vh !important;
+            overflow-y: auto !important;
+          }
+          .sales-layout-content-wrapper {
+            height: auto !important;
+            min-height: 100vh !important;
+            overflow-y: visible !important;
+          }
+          .sales-main-container {
+            height: auto !important;
+            min-height: calc(100vh - 64px) !important;
+            overflow-y: visible !important;
+          }
+          .sales-outlet-container {
+            position: relative !important;
+            inset: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow-y: visible !important;
+          }
+        }
+      `}</style>
+
       <button 
         onClick={toggleSidebar}
         className="xl:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#00288E] text-white rounded-2xl shadow-2xl flex items-center justify-center z-[120] active:scale-90 transition-transform"
@@ -24,7 +51,7 @@ const SalesLayout = () => {
         onClose={() => setIsSidebarOpen(false)} 
       />
       
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="sales-layout-content-wrapper flex-1 flex flex-col h-screen overflow-hidden">
         <div className="flex items-center bg-white border-b border-gray-200 shrink-0 pr-4">
            <button 
              onClick={toggleSidebar}
@@ -37,8 +64,8 @@ const SalesLayout = () => {
            </div>
         </div>
 
-        <main className="flex-1 overflow-hidden relative bg-slate-50"> 
-          <div className="absolute inset-0 flex flex-col overflow-hidden px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-5 lg:max-w-[120rem] mx-auto w-full">
+        <main className="sales-main-container flex-1 overflow-visible relative bg-slate-50"> 
+          <div className="sales-outlet-container absolute inset-0 flex flex-col overflow-visible px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-5 lg:max-w-[120rem] mx-auto w-full">
             <Outlet />
           </div>
         </main>

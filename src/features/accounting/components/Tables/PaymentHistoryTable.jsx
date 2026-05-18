@@ -43,7 +43,11 @@ const PaymentHistoryTable = ({ payments, loading, onPrint }) => {
         if (aValue > bValue) {
           return sortConfig.direction === 'asc' ? 1 : -1;
         }
-        return 0;
+
+        // Tie-breaker: ID (Số lớn hơn là mới hơn)
+        const idA = Number(a.paymentID) || 0;
+        const idB = Number(b.paymentID) || 0;
+        return sortConfig.direction === 'asc' ? idA - idB : idB - idA;
       });
     }
     return sortableItems;

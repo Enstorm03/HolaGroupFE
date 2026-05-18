@@ -76,24 +76,34 @@ const DebtTracker = () => {
     // Logic Sắp xếp
     if (sortConfig.key) {
       result = [...result].sort((a, b) => {
-        let aVal = a[sortConfig.key];
-        let bVal = b[sortConfig.key];
+        let aVal, bVal;
 
         // Xử lý các trường đặc biệt
         if (sortConfig.key === 'lastReminderDate') {
-          // Parse "DD/MM/YYYY" hoặc null
-          const parseDate = (d) => {
+          const parseDateStr = (d) => {
             if (!d) return 0;
             const [day, month, year] = d.split('/').map(Number);
             return new Date(year, month - 1, day).getTime();
           };
-          aVal = parseDate(aVal);
-          bVal = parseDate(bVal);
+          aVal = parseDateStr(a.lastReminderDate);
+          bVal = parseDateStr(b.lastReminderDate);
+        } else if (sortConfig.key === 'displayID') {
+          aVal = Number(a.invoiceID) || 0;
+          bVal = Number(b.invoiceID) || 0;
+        } else {
+          aVal = a[sortConfig.key];
+          bVal = b[sortConfig.key];
         }
 
-        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
+        if (aVal !== bVal) {
+          if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+
+        // Tie-breaker: invoiceID (ID lớn hơn là mới hơn)
+        const idA = Number(a.invoiceID) || 0;
+        const idB = Number(b.invoiceID) || 0;
+        return sortConfig.direction === 'asc' ? idA - idB : idB - idA;
       });
     }
     

@@ -9,13 +9,16 @@ const PaymentConfirmationModal = ({ isOpen, onClose, invoice, onConfirm, loading
 
   useEffect(() => {
     if (invoice) {
-      setAmount(invoice.totalAmount - (invoice.paidAmount || 0));
+      // Dùng field `remaining` đã được tính sẵn từ service (bao gồm VAT)
+      const remainingAmount = invoice.remaining ?? Math.max(0, (invoice.totalAmount || 0) - (invoice.paidAmount || 0));
+      setAmount(remainingAmount);
     }
   }, [invoice]);
 
   if (!isOpen || !invoice) return null;
 
-  const remainingBefore = invoice.totalAmount - (invoice.paidAmount || 0);
+  // Dùng field `remaining` đã được tính sẵn từ service (bao gồm VAT)
+  const remainingBefore = invoice.remaining ?? Math.max(0, (invoice.totalAmount || 0) - (invoice.paidAmount || 0));
   const remainingAfter = Math.max(0, remainingBefore - parseFloat(amount || 0));
   const isPartial = remainingAfter > 0;
 
