@@ -68,12 +68,7 @@ const DebtTable = ({ debts, loading, onReminder, onToggleAuto, isMasterAutoEnabl
           </thead>
           <tbody className="divide-y divide-slate-50">
             {debts.map((item, index) => {
-              const getRiskLevel = (days) => {
-                if (days > 60) return 'critical';
-                if (days > 30) return 'high';
-                return 'medium';
-              };
-              const riskLevel = getRiskLevel(item.daysOverdue);
+              const riskLevel = item.riskLevel || 'medium';
               const config = RISK_CONFIG[riskLevel] || RISK_CONFIG.medium;
               const hasEmail = !!item.email;
 
@@ -111,10 +106,19 @@ const DebtTable = ({ debts, loading, onReminder, onToggleAuto, isMasterAutoEnabl
 
                   <td className="px-8 py-5" data-label="Quá hạn">
                     <div className="flex flex-col items-center gap-1">
-                      <span className="text-sm font-black text-acc-error m-0 whitespace-nowrap">{item.daysOverdue} ngày</span>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${config.bg} ${config.text} text-[8px] font-black uppercase tracking-wider border border-current/10 shadow-sm`}>
-                        {config.label}
-                      </span>
+                      {item.isOverdue ? (
+                        <>
+                          <span className="text-sm font-black text-acc-error m-0 whitespace-nowrap">{item.daysOverdue} ngày</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${config.bg} ${config.text} text-[8px] font-black uppercase tracking-wider border border-current/10 shadow-sm`}>
+                            {config.label}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tight">Thanh toán tiếp</span>
+                          <span className="text-sm font-black text-acc-primary m-0 whitespace-nowrap">{item.nextPaymentDate}</span>
+                        </>
+                      )}
                     </div>
                   </td>
 

@@ -105,29 +105,38 @@ const DailyActivityGrid = ({ loading, apiData, dateFilter, onSelectDay, selected
                     <div className="space-y-2.5">
                         <div className="flex justify-between items-center">
                             <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Doanh thu</span>
-                            <span className="text-[12px] font-black text-emerald-600">+{formatCurrency(hoveredDay.revenue)}</span>
+                            <div className="flex items-baseline gap-0.5 text-emerald-600">
+                                <span className="text-[9px] font-black">+</span>
+                                <span className="text-[10px] font-black">{hoveredDay.revenue.toLocaleString('vi-VN')}</span>
+                                <span className="text-[8px] font-bold opacity-70 ml-0.5">VND</span>
+                            </div>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Công nợ</span>
-                            <span className="text-[12px] font-black text-rose-500">-{formatCurrency(hoveredDay.debt)}</span>
+                            <div className="flex items-baseline gap-0.5 text-rose-500">
+                                <span className="text-[9px] font-black">-</span>
+                                <span className="text-[10px] font-black">{hoveredDay.debt.toLocaleString('vi-VN')}</span>
+                                <span className="text-[8px] font-bold opacity-70 ml-0.5">VND</span>
+                            </div>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Hóa đơn (List)</span>
-                            <span className="text-[12px] font-black text-blue-500">{hoveredDay.invoiceCount || 0}</span>
+                            <span className="text-[10px] font-black text-blue-500">{hoveredDay.invoiceCount || 0}</span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Phiếu thu (Voucher)</span>
-                            <span className="text-[12px] font-black text-amber-500">{hoveredDay.paymentCount || 0}</span>
+                            <span className="text-[10px] font-black text-amber-500">{hoveredDay.paymentCount || 0}</span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-[10px] text-acc-text-light font-black uppercase tracking-tighter">Báo cáo (Report)</span>
-                            <span className="text-[12px] font-black text-purple-500">{hoveredDay.reportCount || 0}</span>
+                            <span className="text-[10px] font-black text-purple-500">{hoveredDay.reportCount || 0}</span>
                         </div>
                         <div className="flex justify-between items-center pt-2.5 border-t border-slate-100">
                             <span className="text-[11px] text-acc-text-main font-black uppercase tracking-wider">Thực thu</span>
-                            <span className="text-[11px] font-black text-acc-primary bg-acc-primary/10 px-3 py-1 rounded-lg">
-                                {formatCurrency(hoveredDay.actual)}
-                            </span>
+                            <div className="flex items-baseline gap-0.5 bg-acc-primary/10 px-3 py-1 rounded-lg text-acc-primary">
+                                <span className="text-[10px] font-black">{hoveredDay.actual.toLocaleString('vi-VN')}</span>
+                                <span className="text-[8px] font-bold opacity-70 ml-0.5">VND</span>
+                            </div>
                         </div>
                     </div>
                 </div>

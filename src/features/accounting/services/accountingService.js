@@ -1,14 +1,8 @@
-import axios from 'axios';
-import dbData from '../mockdata/db.json';
+import api from '../../../services/api';
+import dbData from '../../../../db.json'; // FIXED PATH
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 3000,
-  headers: { 'Content-Type': 'application/json' },
-});
 
 // ─── UTILITIES ──────────────────────────────────────────────────────────────
 
@@ -16,7 +10,7 @@ const apiClient = axios.create({
  * Định dạng ID số sang mã hiển thị (INV-001, PAY-001, v.v.)
  */
 const formatDisplayCode = (id, prefix = 'INV') => {
-  if (!id) return 'N/A';
+  if (id === undefined || id === null || id === '') return 'N/A';
   if (isNaN(id)) return id;
   return `${prefix}-${id.toString().padStart(3, '0')}`;
 };
@@ -69,6 +63,27 @@ const getStatusLabelVN = (status) => {
   if (s === 'partial') return 'T.Toán một phần';
   if (s === 'overdue') return 'Quá hạn';
   return 'Chờ thanh toán';
+};
+
+/**
+ * TỰ ĐỘNG TÍNH TOÁN TRẠNG THÁI HÓA ĐƠN
+ */
+const calculateInvoiceStatus = (totalAmount, paidAmount, dueDate) => {
+  const isFullyPaid = paidAmount >= totalAmount;
+  const hasPartialPayment = paidAmount > 0 && !isFullyPaid;
+  
+  const dueObj = dueDate ? (typeof dueDate === 'string' ? new Date(dueDate) : dueDate) : null;
+  if (dueObj) dueObj.setHours(0, 0, 0, 0);
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const isPastDue = dueObj && dueObj < today;
+
+  if (isFullyPaid) return 'paid';
+  if (isPastDue) return 'overdue';
+  if (hasPartialPayment) return 'partial';
+  return 'pending';
 };
 
 /**
@@ -165,6 +180,13 @@ const getLocalInvoices = () => {
   } catch (e) { return []; }
 };
 
+const getLocalOrders = () => {
+  try {
+    const raw = localStorage.getItem('added_orders');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+};
+
 const getLocalPayments = () => {
   try {
     const raw = localStorage.getItem('added_payments');
@@ -192,9 +214,16 @@ const getAllCurrentInvoices = () => {
   const localInvoices = getLocalInvoices();
   const apiInvoices = dbData.invoices || [];
   const overrides = JSON.parse(localStorage.getItem('invoice_overrides') || '[]');
+  
+  // Tránh trùng lặp: ưu tiên localInvoices và overrides hơn apiInvoices
+  const localAndOverrideIds = new Set([
+    ...localInvoices.map(inv => inv.invoiceID),
+    ...overrides.map(inv => inv.invoiceID)
+  ]);
+
   return [
     ...localInvoices,
-    ...apiInvoices.filter(api => !overrides.some(ov => ov.invoiceID === api.invoiceID)),
+    ...apiInvoices.filter(api => !localAndOverrideIds.has(api.invoiceID)),
     ...overrides
   ];
 };
@@ -465,105 +494,156 @@ const buildExtendedDetail = (notifId) => {
   return { type: 'generic', data: {} };
 };
 
-// ─── MOCK FUNCTIONS ──────────────────────────────────────────────────────────
-
-const mockDashboardStats = (timeframe = 'monthly', options = {}) => {
-  const allInvoices = getAllCurrentInvoices();
-  const allPayments = getAllCurrentPayments();
-  const now = new Date();
-
-  // Helper: Parse date YYYY-MM-DD
-  const pDate = (s) => {
-    if (!s) return null;
-    const parts = s.split('-').map(Number);
-    return new Date(parts[0], parts[1] - 1, parts[2] || 1);
+// ─── GROWTH HELPERS ────────────────────────────────────────────────────────
+const calculateGrowth = (curr, prev) => {
+  if (prev === 0) return { percent: curr > 0 ? "100" : "0", isUp: curr > 0 };
+  const p = ((curr - prev) / prev) * 100;
+  return { 
+    percent: Math.abs(p).toFixed(1), 
+    isUp: p >= 0,
+    raw: p
   };
+};
 
-  const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
-  
-  let filteredInvoices = allInvoices;
-  let filteredPayments = allPayments;
+const calculatePeriodStats = (timeframe, options, invoices, payments, orders) => {
+  const now = new Date();
+  let prevOptions = { ...options };
+  let comparisonLabel = "";
 
   if (timeframe === 'daily') {
-    // If timeframe is daily, we check for a specific selectedDay or default to today
-    const [y, m] = (options.filterDate || "").split('-').map(Number);
-    const targetY = y || now.getFullYear();
-    const targetM = m || (now.getMonth() + 1);
-    const targetD = options.selectedDay || now.getDate();
-    const targetISO = `${targetY}-${String(targetM).padStart(2, '0')}-${String(targetD).padStart(2, '0')}`;
-
-    filteredInvoices = allInvoices.filter(inv => toISODate(inv.invoiceDate) === targetISO);
-    filteredPayments = allPayments.filter(p => toISODate(p.paymentDate) === targetISO);
-  } else if (timeframe === 'weekly') {
-    const [y, w] = (options.filterWeek || "").split('-W').map(Number);
-    // Rough week matching logic: check if the date falls in that week
-    const getISOWeek = (date) => {
-        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-        const dayNum = d.getUTCDay() || 7;
-        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-        return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
-    };
-
-    filteredInvoices = allInvoices.filter(inv => {
-      const d = pDate(inv.invoiceDate);
-      return d && d.getFullYear() === y && getISOWeek(d) === w;
-    });
-    filteredPayments = allPayments.filter(p => {
-      const d = pDate(p.paymentDate);
-      return d && d.getFullYear() === y && getISOWeek(d) === w;
-    });
-  } else if (timeframe === 'monthly') {
-    const targetY = parseInt(options.filterYear) || (options.filterDate ? parseInt(options.filterDate.split('-')[0]) : now.getFullYear());
-    filteredInvoices = allInvoices.filter(inv => {
-      const d = pDate(inv.invoiceDate);
-      return d && d.getFullYear() === targetY;
-    });
-    filteredPayments = allPayments.filter(p => {
-      const d = pDate(p.paymentDate);
-      return d && d.getFullYear() === targetY;
-    });
-  } else if (timeframe === 'yearly') {
-    const yearsCount = parseInt(options.filterYearsCount) || 5;
-    const endY = now.getFullYear();
-    const startY = endY - yearsCount + 1;
+    const y = options.filterDate ? parseInt(options.filterDate.split('-')[0]) : now.getFullYear();
+    const m = options.filterDate ? parseInt(options.filterDate.split('-')[1]) : (now.getMonth() + 1);
+    const d = options.selectedDay || now.getDate();
+    const current = new Date(y, m - 1, d);
+    const prev = new Date(current);
+    prev.setDate(current.getDate() - 1);
     
-    filteredInvoices = allInvoices.filter(inv => {
-      const y = pDate(inv.invoiceDate)?.getFullYear();
-      return y && y >= startY && y <= endY;
-    });
-    filteredPayments = allPayments.filter(p => {
-      const y = pDate(p.paymentDate)?.getFullYear();
-      return y && y >= startY && y <= endY;
-    });
+    prevOptions.filterDate = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    prevOptions.selectedDay = prev.getDate();
+    comparisonLabel = "SO VỚI HÔM QUA";
+  } 
+  else if (timeframe === 'weekly') {
+    const [y, w] = (options.filterWeek || "").split('-W').map(Number);
+    let prevW = w - 1;
+    let prevY = y;
+    if (prevW < 1) { prevW = 52; prevY--; }
+    prevOptions.filterWeek = `${prevY}-W${String(prevW).padStart(2, '0')}`;
+    comparisonLabel = "SO VỚI TUẦN TRƯỚC";
+  }
+  else if (timeframe === 'monthly') {
+    const y = parseInt(options.filterYear) || (options.filterDate ? parseInt(options.filterDate.split('-')[0]) : now.getFullYear());
+    prevOptions.filterYear = y - 1;
+    comparisonLabel = "SO VỚI NĂM TRƯỚC";
+  }
+  else {
+    const count = parseInt(options.filterYearsCount) || 5;
+    const currentYear = options.filterYear || now.getFullYear();
+    prevOptions.filterYear = currentYear - count;
+    comparisonLabel = `SO VỚI ${count} NĂM TRƯỚC`;
   }
 
-  const totalRev = filteredInvoices.reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
-  const totalDebt = filteredInvoices.reduce((sum, inv) => {
+  const matchesTimeframe = (dateStr, tf, opt) => {
+    const pd = parseDateToObj(dateStr);
+    if (!pd) return false;
+    if (tf === 'daily') {
+      const ty = opt.filterDate ? parseInt(opt.filterDate.split('-')[0]) : now.getFullYear();
+      const tm = opt.filterDate ? parseInt(opt.filterDate.split('-')[1]) : (now.getMonth() + 1);
+      const td = opt.selectedDay || now.getDate();
+      return pd.getFullYear() === ty && (pd.getMonth() + 1) === tm && pd.getDate() === td;
+    } else if (tf === 'weekly') {
+      const [yS, wS] = (opt.filterWeek || "").split('-W');
+      return pd.getFullYear() === (parseInt(yS) || now.getFullYear()) && getISOWeek(pd) === (parseInt(wS) || getISOWeek(now));
+    } else if (tf === 'monthly') {
+      return pd.getFullYear() === (parseInt(opt.filterYear) || now.getFullYear());
+    } else {
+      const c = parseInt(opt.filterYearsCount) || 5;
+      const end = opt.filterYear || now.getFullYear();
+      const start = end - c + 1;
+      return pd.getFullYear() >= start && pd.getFullYear() <= end;
+    }
+  };
+
+  const filteredOrders = orders.filter(o => matchesTimeframe(o.orderDate || o.date, timeframe, options));
+  const prevOrders = orders.filter(o => matchesTimeframe(o.orderDate || o.date, timeframe, prevOptions));
+  
+  const filteredPayments = payments.filter(p => matchesTimeframe(p.paymentDate, timeframe, options));
+  const prevPayments = payments.filter(p => matchesTimeframe(p.paymentDate, timeframe, prevOptions));
+
+  const filteredInvoices = invoices.filter(inv => matchesTimeframe(inv.invoiceDate || inv.createAt, timeframe, options));
+  const prevInvoices = invoices.filter(inv => matchesTimeframe(inv.invoiceDate || inv.createAt, timeframe, prevOptions));
+
+  const rev = filteredOrders.reduce((sum, o) => sum + (safeNumber(o.totalAmount) * 1.1), 0);
+  const pRev = prevOrders.reduce((sum, o) => sum + (safeNumber(o.totalAmount) * 1.1), 0);
+
+  const collected = filteredPayments.reduce((sum, p) => sum + safeNumber(p.amount), 0);
+  const pCollected = prevPayments.reduce((sum, p) => sum + safeNumber(p.amount), 0);
+
+  const debt = filteredInvoices.reduce((sum, inv) => {
     const s = normalizeInvoiceStatus(inv.status);
     return s !== 'paid' ? sum + (safeNumber(inv.totalAmount) - safeNumber(inv.paidAmount)) : sum;
   }, 0);
-  const totalCollected = filteredPayments.reduce((sum, p) => sum + safeNumber(p.amount), 0);
+  const pDebt = prevInvoices.reduce((sum, inv) => {
+    const s = normalizeInvoiceStatus(inv.status);
+    return s !== 'paid' ? sum + (safeNumber(inv.totalAmount) - safeNumber(inv.paidAmount)) : sum;
+  }, 0);
 
   return {
-    totalRevenue: totalRev,
-    totalDebt: totalDebt,
-    totalCollected: totalCollected,
-    pendingInvoices: filteredInvoices.length.toString(),
+    revenue: rev,
+    prevRevenue: pRev,
+    collected,
+    prevCollected: pCollected,
+    debt,
+    prevDebt: pDebt,
+    invoiceCount: filteredInvoices.length,
+    prevInvoiceCount: prevInvoices.length,
+    comparisonLabel
+  };
+};
+
+// ─── MOCK FUNCTIONS ──────────────────────────────────────────────────────────
+
+const mockDashboardStats = (timeframe = 'monthly', options = {}) => {
+  const allOrders = [...(dbData.orders || []), ...getLocalOrders()];
+  const allPayments = getAllCurrentPayments();
+  const allInvoices = getAllCurrentInvoices();
+
+  const pStats = calculatePeriodStats(timeframe, options, allInvoices, allPayments, allOrders);
+
+  const revenueGrowth = { ...calculateGrowth(pStats.revenue, pStats.prevRevenue), prevValue: pStats.prevRevenue, label: pStats.comparisonLabel };
+  const collectedGrowth = { ...calculateGrowth(pStats.collected, pStats.prevCollected), prevValue: pStats.prevCollected, label: pStats.comparisonLabel };
+  const debtGrowth = { ...calculateGrowth(pStats.debt, pStats.prevDebt), prevValue: pStats.prevDebt, label: pStats.comparisonLabel };
+  const invoiceGrowth = { ...calculateGrowth(pStats.invoiceCount, pStats.prevInvoiceCount), prevValue: pStats.prevInvoiceCount, label: pStats.comparisonLabel };
+
+  return {
+    totalRevenue: pStats.revenue,
+    totalDebt: pStats.debt,
+    totalCollected: pStats.collected,
+    pendingInvoices: pStats.invoiceCount.toString(),
     cashBalance: dbData.stats.totalBalance || '1.250.000.000',
     notifications: buildNotifications(timeframe, options),
+    revenueGrowth,
+    collectedGrowth,
+    debtGrowth,
+    invoiceGrowth
   };
 };
 
 const mockInvoices = () => {
   const allPayments = getAllCurrentPayments();
-  const allOrders = dbData.orders || [];
+  // FIX: Bao gồm cả đơn hàng từ localStorage để lookup userID cho hóa đơn mới
+  const allOrders = [...(dbData.orders || []), ...getLocalOrders()];
   const allOrderItems = [...(dbData.orderItems || []), ...getLocalOrderItems()];
   const allProducts = dbData.products || [];
 
   return getAllCurrentInvoices().map(inv => {
-    const order = allOrders.find(o => Number(o.orderID) === Number(inv.orderID));
+    // FIX: So sánh ID dạng chuỗi để tránh lỗi NaN với các ID local hoặc có tiền tố
+    const order = allOrders.find(o => String(o.orderID) === String(inv.orderID));
     const customer = getCustomerDetails(inv.customerID || order?.customerID);
+    
+    // Ưu tiên userID trên hóa đơn, nếu không có thì lấy từ đơn hàng
+    const targetUserID = inv.userID || order?.userID;
+    const salesperson = dbData.users?.find(u => String(u.userID) === String(targetUserID));
+    const salespersonName = salesperson ? `${salesperson.lastName} ${salesperson.firstName}` : 'Không xác định';
     
       // Join items from OrderItems and Products
       const items = allOrderItems
@@ -575,6 +655,8 @@ const mockInvoices = () => {
             name: product?.productName || oi.productName || oi.name || 'Sản phẩm không xác định',
             productName: product?.productName || oi.productName || oi.name || 'Sản phẩm không xác định',
             categoryID: product?.categoryID || oi.categoryID,
+            categoryName: dbData.categories?.find(c => c.categoryID === (product?.categoryID || oi.categoryID))?.categoryName || 'Sản phẩm',
+            price: oi.unitPrice || product?.salePrice || 0,
             unit: product?.unit || oi.unit || 'đv'
           };
         });
@@ -584,7 +666,9 @@ const mockInvoices = () => {
         const product = allProducts.find(p => p.productID === it.productID);
         return {
           ...it,
-          categoryID: it.categoryID || product?.categoryID
+          categoryID: it.categoryID || product?.categoryID,
+          categoryName: it.categoryName || dbData.categories?.find(c => c.categoryID === (it.categoryID || product?.categoryID))?.categoryName || 'Sản phẩm',
+          price: it.price || it.unitPrice || product?.salePrice || 0
         };
       });
 
@@ -603,18 +687,35 @@ const mockInvoices = () => {
       }
     }
 
-    // Logic tự động set trạng thái quá hạn
-    let effectiveStatus = normalizedStatus;
-    if (effectiveStatus !== 'paid' && inv.dueDate) {
-      const dueObj = parseDateToObj(inv.dueDate);
-      if (dueObj && dueObj < new Date()) {
-        effectiveStatus = 'overdue';
-      }
+    // 1. Tính toán tổng tiền thực tế (Subtotal + 10% VAT + Fees)
+    const subtotal = finalItems.reduce((sum, it) => sum + (it.quantity * (it.price || it.unitPrice || 0)), 0);
+    const taxAmount = subtotal * 0.1;
+    const adjustment = (inv.fees?.shipping || 0) + (inv.fees?.handling || 0) + (inv.fees?.insurance || 0) - (inv.fees?.discount || 0);
+    const calculatedTotal = subtotal + taxAmount + adjustment;
+
+    // 2. Tính số tiền đã thu từ lịch sử thanh toán thực tế
+    const totalPaidFromRecords = payments.reduce((sum, p) => sum + safeNumber(p.amount), 0);
+    
+    // Nếu trạng thái gốc là 'paid' nhưng không có payment records (dữ liệu mẫu) -> Coi như đã trả đủ
+    let finalPaidAmount = totalPaidFromRecords;
+    if (normalizeInvoiceStatus(inv.status) === 'paid' && totalPaidFromRecords === 0) {
+      finalPaidAmount = calculatedTotal;
     }
+
+    // 3. TỰ ĐỘNG XÁC ĐỊNH TRẠNG THÁI
+    const effectiveStatus = calculateInvoiceStatus(calculatedTotal, finalPaidAmount, inv.dueDate);
+
+    const remaining = Math.max(0, calculatedTotal - finalPaidAmount);
 
     return {
       ...inv,
-      status: effectiveStatus, // Ghi đè trạng thái thực tế
+      totalAmount: calculatedTotal,
+      paidAmount: finalPaidAmount,
+      remaining,
+      taxAmount,
+      subtotal,
+      salespersonName,
+      status: effectiveStatus, // Trạng thái tự động hoàn toàn
       displayID: formatDisplayCode(inv.invoiceID, 'INV'),
       displayOrderID: (inv.orderID && !isNaN(inv.orderID))
         ? formatDisplayCode(inv.orderID, 'ORD')
@@ -648,78 +749,63 @@ const mockPayments = () => {
 
 const mockDebtReport = () => {
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // So sánh theo ngày, bỏ qua giờ
+  today.setHours(0, 0, 0, 0);
 
-  // Lấy tất cả hóa đơn đã được enrich (có customerName, effectiveStatus)
+  // Lấy tất cả hóa đơn đã được enrich
   const allProcessedInvoices = mockInvoices();
 
-  // Lọc hóa đơn quá hạn: DUAL CHECK
-  // 1. Kiểm tra trạng thái đã là 'overdue'
-  // 2. HOẶC chưa thanh toán xong và dueDate đã qua
-  const overdueInvoices = allProcessedInvoices.filter(inv => {
+  // Lọc hóa đơn công nợ: Hiển thị hóa đơn QUÁ HẠN hoặc THANH TOÁN 1 PHẦN
+  const debtInvoices = allProcessedInvoices.filter(inv => {
+    // Tính remaining trực tiếp từ total và paid để tránh sai lệch
+    const actualRemaining = Math.max(0, (Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0));
     const status = normalizeInvoiceStatus(inv.status);
-    if (status === 'paid') return false;
-    if (status === 'overdue') return true;
-    if (inv.dueDate) {
-      const dueObj = parseDateToObj(inv.dueDate);
-      if (dueObj) {
-        const dueCopy = new Date(dueObj);
-        dueCopy.setHours(0, 0, 0, 0);
-        if (dueCopy < today) return true;
-      }
-    }
-    return false;
+
+    // 1. Đã thanh toán đủ -> Bỏ qua
+    if (status === 'paid' || actualRemaining <= 0) return false;
+
+    // 2. Mọi hóa đơn chưa thanh toán đủ đều là công nợ (hiện cả Partial, Overdue, Pending)
+    return true;
   });
 
-  // Nhóm theo khách hàng (debt hiển thị theo từng khách hàng)
-  const customerMap = {};
-  for (const inv of overdueInvoices) {
-    const custID = String(inv.customerID || 'unknown');
+  // Chuyển thành danh sách nợ theo từng hóa đơn
+  const debtItems = debtInvoices.map(inv => {
     const dueObj = parseDateToObj(inv.dueDate);
     let overdueDays = 0;
+    let isOverdue = false;
+
     if (dueObj) {
       const dueCopy = new Date(dueObj);
       dueCopy.setHours(0, 0, 0, 0);
       const diffTime = today - dueCopy;
       overdueDays = diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
+      isOverdue = diffTime > 0;
     }
+    
     const remaining = Math.max(0, (Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0));
-
-    if (!customerMap[custID]) {
-      customerMap[custID] = {
-        customerID: inv.customerID,
-        customerName: inv.customerName || 'Khách hàng lẻ',
-        email: inv.email || null,
-        phoneNumber: inv.phoneNumber || null,
-        companyName: inv.companyName || null,
-        invoiceIDs: [],
-        totalAmount: 0,
-        remainingAmount: 0,
-        maxOverdueDays: 0,
-      };
-    }
-
-    customerMap[custID].invoiceIDs.push(inv.invoiceID);
-    customerMap[custID].totalAmount += Number(inv.totalAmount) || 0;
-    customerMap[custID].remainingAmount += remaining;
-    customerMap[custID].maxOverdueDays = Math.max(customerMap[custID].maxOverdueDays, overdueDays);
-  }
-
-  // Chuyển map thành mảng và tính risk
-  const debtItems = Object.values(customerMap).map(cust => {
-    const days = cust.maxOverdueDays;
+    
+    // Tính mức độ rủi ro (Chỉ tính nếu đã quá hạn)
     let risk = 'medium';
-    if (days > 30 || cust.remainingAmount > 100000000) risk = 'critical';
-    else if (days > 15 || cust.remainingAmount > 50000000) risk = 'high';
+    if (isOverdue) {
+      if (overdueDays > 90) risk = 'critical';
+      else if (overdueDays > 30) risk = 'high';
+    }
 
     return {
-      ...cust,
-      invoiceID: cust.invoiceIDs[0],
-      displayID: cust.invoiceIDs.map(id => formatDisplayCode(id, 'INV')).join(', '),
-      daysOverdue: days,
+      invoiceID: inv.invoiceID,
+      displayID: formatDisplayCode(inv.invoiceID, 'INV'),
+      customerID: inv.customerID,
+      customerName: inv.customerName || 'Khách hàng lẻ',
+      email: inv.email || null,
+      phoneNumber: inv.phoneNumber || null,
+      companyName: inv.companyName || null,
+      daysOverdue: overdueDays,
+      isOverdue,
+      remainingAmount: remaining,
+      totalAmount: Number(inv.totalAmount) || 0,
       riskLevel: risk,
-      autoRemind: cust.remainingAmount > 10000000,
-      lastReminderDate: days > 7 ? '20/04/2026' : null,
+      autoRemind: remaining > 10000000,
+      lastReminderDate: overdueDays > 7 ? '20/04/2026' : null,
+      nextPaymentDate: !isOverdue ? (inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('vi-VN') : 'N/A') : null
     };
   });
 
@@ -727,13 +813,16 @@ const mockDebtReport = () => {
   const allUnpaid = allProcessedInvoices.filter(inv => normalizeInvoiceStatus(inv.status) !== 'paid');
   const totalDebtVal = allUnpaid.reduce((sum, inv) => sum + Math.max(0, (Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0)), 0);
   const overdueDebtVal = debtItems.reduce((sum, d) => sum + d.remainingAmount, 0);
+  
+  // Đếm số khách hàng duy nhất bị quá hạn
+  const uniqueCustomerCount = new Set(debtItems.map(d => d.customerID)).size;
 
   return {
     data: debtItems,
     summary: {
       totalDebt: totalDebtVal.toLocaleString('vi-VN') + ' VND',
       overdueDebt: overdueDebtVal.toLocaleString('vi-VN') + ' VND',
-      customerCount: debtItems.length.toString()
+      customerCount: uniqueCustomerCount.toString()
     }
   };
 };
@@ -979,7 +1068,7 @@ const accountingService = {
 
   getDashboardStats: async (timeframe, options = {}) => {
     if (USE_MOCK) return mockDashboardStats(timeframe, options);
-    const response = await apiClient.get('/api/reports/revenue/stats', { params: { timeframe, ...options } });
+    const response = await api.get('/api/reports/revenue/stats', { params: { timeframe, ...options } });
     return response.data;
   },
 
@@ -998,13 +1087,25 @@ const accountingService = {
       endDate: options.endDate || '2026-12-31',
       groupBy: timeframe === 'monthly' ? 'month' : timeframe === 'daily' ? 'day' : timeframe === 'weekly' ? 'week' : 'year'
     };
-    const response = await apiClient.get('/api/reports/revenue', { params });
+    const response = await api.get('/api/reports/revenue', { params });
     return response.data;
   },
 
   getInvoices: async () => {
     if (USE_MOCK) return mockInvoices();
-    const response = await apiClient.get('/api/invoices');
+    const response = await api.get('/api/invoices');
+    return response.data;
+  },
+
+  getOrders: async () => {
+    if (USE_MOCK) return [...(dbData.orders || []), ...getLocalOrders()];
+    const response = await api.get('/api/orders');
+    return response.data;
+  },
+
+  getOrderItems: async () => {
+    if (USE_MOCK) return [...(dbData.orderItems || []), ...getLocalOrderItems()];
+    const response = await api.get('/api/order-items');
     return response.data;
   },
 
@@ -1069,63 +1170,54 @@ const accountingService = {
 
       return Object.entries(results).map(([name, value]) => ({ name, value }));
     }
-    const response = await apiClient.get('/api/reports/categories', { params: { timeframe, ...options } });
+    const response = await api.get('/api/reports/categories', { params: { timeframe, ...options } });
     return response.data;
   },
 
   getSalesPerformanceReport: async (timeframe = 'monthly', options = {}) => {
     if (USE_MOCK) {
-      const allInvoices = getAllCurrentInvoices();
-      const orders = dbData.orders || [];
+      const allOrders = [...(dbData.orders || []), ...getLocalOrders()];
       const salesUsers = (dbData.users || []).filter(u => u.roleID === 2);
+      const now = new Date();
 
-      const filteredInvoices = allInvoices.filter(inv => {
-        const pd = parseDate(inv.invoiceDate || inv.createAt);
+      // Helper logic for timeframe filtering (consistent with dashboard)
+      const matchesTimeframe = (dateStr) => {
+        const pd = parseDateToObj(dateStr);
         if (!pd) return false;
 
-        const now = new Date();
-        const selectedYear = options.filterYear || now.getFullYear();
-
-        if (timeframe === 'monthly') {
-          return pd.y === selectedYear;
-        } else if (timeframe === 'yearly') {
-          const count = options.filterYearsCount || 5;
-          return pd.y >= (selectedYear - count + 1) && pd.y <= selectedYear;
+        if (timeframe === 'daily') {
+          const targetY = options.filterDate ? parseInt(options.filterDate.split('-')[0]) : now.getFullYear();
+          const targetM = options.filterDate ? parseInt(options.filterDate.split('-')[1]) : (now.getMonth() + 1);
+          const targetD = options.selectedDay || now.getDate();
+          return pd.getFullYear() === targetY && (pd.getMonth() + 1) === targetM && pd.getDate() === targetD;
         } else if (timeframe === 'weekly') {
-          const [y, w] = (options.filterWeek || "").split('-W').map(Number);
-          if (!y || !w) return pd.y === now.getFullYear();
-          
-          const d = new Date(pd.y, pd.m - 1, pd.d);
-          const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-          const dayNum = target.getUTCDay() || 7;
-          target.setUTCDate(target.getUTCDate() + 4 - dayNum);
-          const yearStart = new Date(Date.UTC(target.getUTCFullYear(),0,1));
-          const weekNo = Math.ceil((((target - yearStart) / 86400000) + 1)/7);
-          return target.getUTCFullYear() === y && weekNo === w;
-        } else if (timeframe === 'daily') {
-          const [y, m] = (options.filterDate || "").split('-').map(Number);
-          const baseMatch = pd.y === y && pd.m === m;
-          if (options.selectedDay && baseMatch) {
-            return pd.d === Number(options.selectedDay);
-          }
-          return baseMatch;
+          const [yStr, wStr] = (options.filterWeek || "").split('-W');
+          const targetY = parseInt(yStr) || now.getFullYear();
+          const targetW = parseInt(wStr) || getISOWeek(now);
+          return pd.getFullYear() === targetY && getISOWeek(pd) === targetW;
+        } else if (timeframe === 'monthly') {
+          const targetY = parseInt(options.filterYear) || (options.filterDate ? parseInt(options.filterDate.split('-')[0]) : now.getFullYear());
+          return pd.getFullYear() === targetY;
+        } else {
+          const yearsCount = parseInt(options.filterYearsCount) || 5;
+          const endY = now.getFullYear();
+          const startY = endY - yearsCount + 1;
+          const y = pd.getFullYear();
+          return y >= startY && y <= endY;
         }
-        return true;
-      });
+      };
 
       return salesUsers.map(user => {
-        // Sử dụng cấu trúc SQL-aligned: firstName, lastName
         const fullName = `${user.lastName} ${user.firstName}`;
-        const userOrders = orders.filter(o => o.userID === user.userID);
-        const userOrderIds = new Set(userOrders.map(o => o.orderID));
         
-        // Cải tiến: Kiểm tra cả ID đơn hàng lẫn ID nhân viên trực tiếp trên hóa đơn
-        const userInvoices = filteredInvoices.filter(inv => 
-          userOrderIds.has(inv.orderID) || Number(inv.userID) === user.userID
+        // ĐỒNG BỘ: Sử dụng Đơn hàng làm gốc để tính hiệu suất nhân viên (giống Module Sales)
+        const userOrders = allOrders.filter(o => 
+          Number(o.userID) === Number(user.userID) && matchesTimeframe(o.orderDate || o.date)
         );
         
-        const revenue = userInvoices.reduce((sum, inv) => sum + safeNumber(inv.totalAmount), 0);
-        const orderCount = userInvoices.length;
+        // Doanh thu tính 10% VAT để khớp với kỳ vọng hiển thị
+        const revenue = userOrders.reduce((sum, o) => sum + (safeNumber(o.totalAmount) * 1.1), 0);
+        const orderCount = userOrders.length;
         
         let target = 500000000;
         if (timeframe === 'yearly') target = 5000000000;
@@ -1146,7 +1238,7 @@ const accountingService = {
         };
       });
     }
-    const response = await apiClient.get('/api/reports/sales-performance', { params: { timeframe, ...options } });
+    const response = await api.get('/api/reports/sales-performance', { params: { timeframe, ...options } });
     return response.data;
   },
 
@@ -1156,12 +1248,28 @@ const accountingService = {
       const all = [...local, ...dbData.invoices];
       const maxId = all.reduce((max, inv) => Math.max(max, Number(inv.invoiceID) || 0), 0);
       
-      const orderID = data.orderID || (200 + maxId); // Mock orderID
+      // FIX: Parse orderID từ dạng "ORD-101" hoặc số nguyên
+      const rawOrderID = data.orderID;
+      let resolvedOrderID;
+      if (rawOrderID) {
+        const str = String(rawOrderID).toUpperCase().replace('ORD-', '');
+        resolvedOrderID = isNaN(Number(str)) ? rawOrderID : Number(str);
+      } else {
+        resolvedOrderID = 200 + maxId; // Mock orderID nếu không nhập
+      }
       
+      // Tự động gán userID từ đơn hàng nếu hóa đơn chưa có
+      let finalUserID = data.userID;
+      if (!finalUserID && resolvedOrderID) {
+        const linkedOrder = allOrders.find(o => String(o.orderID) === String(resolvedOrderID));
+        if (linkedOrder) finalUserID = linkedOrder.userID;
+      }
+
       const newInvoice = {
         ...data,
         invoiceID: maxId + 1,
-        orderID: orderID,
+        orderID: resolvedOrderID,
+        userID: finalUserID || 1, // Fallback về admin/system nếu vẫn không tìm thấy
         paidAmount: data.paidAmount || 0,
         status: data.status || 'pending',
         createAt: new Date().toISOString().split('T')[0]
@@ -1171,7 +1279,7 @@ const accountingService = {
       if (data.items && data.items.length > 0) {
         const localItems = getLocalOrderItems();
         const itemsToStore = data.items.map(it => ({
-          orderID: orderID,
+          orderID: resolvedOrderID,
           productID: it.productID,
           quantity: it.quantity,
           unitPrice: it.unitPrice || it.price,
@@ -1186,13 +1294,13 @@ const accountingService = {
       return {
         ...newInvoice,
         displayID: formatDisplayCode(newInvoice.invoiceID, 'INV'),
-        displayOrderID: formatDisplayCode(orderID, 'ORD'),
+        displayOrderID: formatDisplayCode(resolvedOrderID, 'ORD'),
         ...customer,
         orderStatus: getStatusLabelVN(newInvoice.status),
         date: newInvoice.invoiceDate ? new Date(newInvoice.invoiceDate).toLocaleDateString('vi-VN') : 'N/A',
       };
     }
-    const response = await apiClient.post('/api/invoices', data);
+    const response = await api.post('/api/invoices', data);
     return response.data;
   },
 
@@ -1205,7 +1313,7 @@ const accountingService = {
       localStorage.setItem('added_invoices', JSON.stringify(updated));
       return true;
     }
-    const response = await apiClient.put(`/api/invoices/${id}/status`, { status });
+    const response = await api.put(`/api/invoices/${id}/status`, { status });
     return response.data;
   },
 
@@ -1218,13 +1326,13 @@ const accountingService = {
       localStorage.setItem('added_invoices', JSON.stringify(updated));
       return true;
     }
-    const response = await apiClient.put(`/api/invoices/${id}/costs`, { totalAmount });
+    const response = await api.put(`/api/invoices/${id}/costs`, { totalAmount });
     return response.data;
   },
 
   getPayments: async () => {
     if (USE_MOCK) return mockPayments();
-    const response = await apiClient.get('/api/payments');
+    const response = await api.get('/api/payments');
     return response.data;
   },
 
@@ -1237,8 +1345,11 @@ const accountingService = {
 
       const inv = allInvoices.find(i => i.invoiceID === Number(invoiceID));
       if (inv) {
+        // Cập nhật số tiền đã thanh toán
         inv.paidAmount = (Number(inv.paidAmount) || 0) + (Number(paymentDetails.amount) || 0);
-        inv.status = inv.paidAmount >= inv.totalAmount ? 'paid' : 'partial';
+        
+        // Tự động tính lại trạng thái
+        inv.status = calculateInvoiceStatus(inv.totalAmount, inv.paidAmount, inv.dueDate);
 
         const isLocal = localInvoices.some(i => i.invoiceID === inv.invoiceID);
         if (isLocal) {
@@ -1271,7 +1382,7 @@ const accountingService = {
       localStorage.setItem('added_payments', JSON.stringify([newPayment, ...localPayments]));
       return true;
     }
-    const response = await apiClient.post('/api/payments', { invoiceID, ...paymentDetails });
+    const response = await api.post('/api/payments', { invoiceID, ...paymentDetails });
     return response.data;
   },
 
@@ -1281,7 +1392,7 @@ const accountingService = {
       const allNotifs = buildNotifications();
       return allNotifs.find(n => n.id === id) || null;
     }
-    const response = await apiClient.get(`/api/notifications/${id}`);
+    const response = await api.get(`/api/notifications/${id}`);
     return response.data;
   },
 
@@ -1289,13 +1400,13 @@ const accountingService = {
     if (USE_MOCK) {
       return buildExtendedDetail(id);
     }
-    const response = await apiClient.get(`/api/notifications/${id}/extended`);
+    const response = await api.get(`/api/notifications/${id}/extended`);
     return response.data;
   },
 
   getDebtReport: async () => {
     if (USE_MOCK) return mockDebtReport();
-    const response = await apiClient.get('/api/reports/debt');
+    const response = await api.get('/api/reports/debt');
     return response.data;
   },
 
@@ -1306,7 +1417,7 @@ const accountingService = {
       await new Promise(resolve => setTimeout(resolve, 800));
       return { success: true, message: "Mock: Gửi mail thành công" };
     }
-    const response = await apiClient.post('/api/reminders/send', { invoiceID });
+    const response = await api.post('/api/reminders/send', { invoiceID });
     return response.data;
   },
 
@@ -1315,19 +1426,19 @@ const accountingService = {
       await new Promise(resolve => setTimeout(resolve, 1500));
       return { success: true, count: invoiceIDs.length };
     }
-    const response = await apiClient.post('/api/reminders/batch-send', { invoiceIDs });
+    const response = await api.post('/api/reminders/batch-send', { invoiceIDs });
     return response.data;
   },
 
   getProducts: async () => {
     if (USE_MOCK) return dbData.products || [];
-    const response = await apiClient.get('/api/products');
+    const response = await api.get('/api/products');
     return response.data;
   },
 
   getCategories: async () => {
     if (USE_MOCK) return dbData.categories || [];
-    const response = await apiClient.get('/api/categories');
+    const response = await api.get('/api/categories');
     return response.data;
   },
 

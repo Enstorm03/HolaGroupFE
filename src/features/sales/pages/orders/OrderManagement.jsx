@@ -1,48 +1,190 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import CreateOrder from './CreateOrder'; 
 import salesService from '../../services/salesService';
+import OrderDetailDrawer from '../../components/Drawers/OrderDetailDrawer';
+
+const formatCurrency = (val, isSmall = false, isStat = false) => {
+  if (val === undefined || val === null) return "0 VND";
+  
+  let cleanVal = val;
+  const isMobileOrIpad = typeof window !== 'undefined' && window.innerWidth < 1024;
+  if (isMobileOrIpad && (typeof val === 'number' || typeof val === 'string')) {
+    const rawDigits = String(val).replace(/[^0-9]/g, '');
+    if (rawDigits.length > 15) {
+      const truncated = rawDigits.slice(0, 15);
+      const isNegative = String(val).startsWith('-');
+      cleanVal = Number(truncated) * (isNegative ? -1 : 1);
+    }
+  }
+
+  const formatted = typeof cleanVal === 'number' ? cleanVal.toLocaleString('vi-VN') : cleanVal.toString().replace(/[đ₫\sVND]/g, '').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+  
+  if (isStat) {
+    return (
+      <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+        <span className="font-black text-inherit">{formatted}</span>
+        <span className="font-black text-inherit uppercase tracking-tight">VND</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex items-baseline gap-1 whitespace-nowrap">
+      <span className={isSmall ? "font-bold text-slate-800" : "font-black text-slate-800"}>{formatted}</span>
+      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">VND</span>
+    </span>
+  );
+};
+
+const extractIdNumber = (idVal) => {
+  if (typeof idVal === 'number') return idVal;
+  if (!idVal) return 0;
+  const match = idVal.toString().match(/\d+/g);
+  if (match) {
+    return parseInt(match[match.length - 1], 10);
+  }
+  return 0;
+};
+
+const getWeekRange = (year, week) => {
+  const d = new Date(year, 0, 1);
+  const dayNum = d.getDay();
+  const diff = d.getDate() - dayNum + (dayNum === 0 ? -6 : 1);
+  const firstMonday = new Date(d.setDate(diff));
+  const start = new Date(firstMonday.getTime() + (week - 1) * 7 * 24 * 60 * 60 * 1000);
+  const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+  return `${start.getDate()}/${start.getMonth() + 1} - ${end.getDate()}/${end.getMonth() + 1}`;
+};
+
+const getResponsiveValueClass = (val, rawVal) => {
+  let str = '';
+  if (rawVal !== undefined && rawVal !== null) {
+    str = String(rawVal);
+    if (typeof rawVal === 'number') {
+      str += ' VND..';
+    }
+  } else if (val) {
+    str = String(val);
+  }
+  const len = str.length;
+  if (len <= 10) {
+    return "text-base sm:text-lg lg:text-lg xl:text-xl";
+  } else if (len <= 15) {
+    return "text-sm sm:text-base lg:text-[13px] xl:text-lg";
+  } else if (len <= 20) {
+    return "text-xs sm:text-sm lg:text-[11px] xl:text-base";
+  } else {
+    return "text-[10px] sm:text-xs lg:text-[10px] xl:text-sm";
+  }
+};
 
 const OrderManagement = () => {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    shipping: 0,
-    revenue: '0M'
-  });
+  
+  const [timeframe, setTimeframe] = useState('monthly');
+  
+  // Date filters states
+  const now = new Date();
+  const getISOWeekString = (date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+  };
+
+  const [filterWeek, setFilterWeek] = useState(getISOWeekString(now));
+  const [filterYear, setFilterYear] = useState(now.getFullYear());
+  const [filterDate, setFilterDate] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  const [filterYearsCount, setFilterYearsCount] = useState(5);
+  const [selectedDay, setSelectedDay] = useState(now.getDate());
+
+  // Picker visibility states
+  const [showYearPicker, setShowYearPicker] = useState(false);
+  const [showWeekPicker, setShowWeekPicker] = useState(false);
+  const [showYearsCountPicker, setShowYearsCountPicker] = useState(false);
+  const [yearRangeStart, setYearRangeStart] = useState(Math.floor(now.getFullYear() / 10) * 10 - 4);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerView, setDatePickerView] = useState('months');
+  const [dateTempYear, setDateTempYear] = useState(now.getFullYear());
+  const [dateYearRangeStart, setDateYearRangeStart] = useState(Math.floor(now.getFullYear() / 12) * 12);
+
+  const yearPickerRef = React.useRef(null);
+  const weekPickerRef = React.useRef(null);
+  const yearsCountPickerRef = React.useRef(null);
+  const datePickerRef = React.useRef(null);
+
+  const monthNames = [
+    "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
+    "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
+  ];
 
   const [activeTab, setActiveTab] = useState('Tất cả');
   const tabs = ['Tất cả', 'Chờ xác nhận', 'Đang giao', 'Hoàn thành', 'Đã hủy'];
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  const [sortConfig, setSortConfig] = useState({ key: 'id', direction: 'desc' });
+
+  const [activeTooltipIdx, setActiveTooltipIdx] = useState(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (yearPickerRef.current && !yearPickerRef.current.contains(event.target)) setShowYearPicker(false);
+      if (weekPickerRef.current && !weekPickerRef.current.contains(event.target)) setShowWeekPicker(false);
+      if (yearsCountPickerRef.current && !yearsCountPickerRef.current.contains(event.target)) setShowYearsCountPicker(false);
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
+        setShowDatePicker(false);
+        setDatePickerView('months');
+      }
+      if (!event.target.closest('.stat-card-container')) {
+        setActiveTooltipIdx(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeTab, sortConfig, timeframe, filterWeek, filterYear, filterDate, selectedDay, filterYearsCount]);
+
+  const handleSort = (key) => {
+    let direction = 'desc';
+    if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await salesService.getOrders();
+        const rawUser = localStorage.getItem('current_user') || localStorage.getItem('user');
+        const currentUser = rawUser ? JSON.parse(rawUser) : null;
+        const userID = currentUser?.userID;
+
+        const data = await salesService.getOrders(userID);
         
-        // Map data to UI format
         const mappedOrders = data.map(order => ({
+          ...order,
           id: order.displayID,
           customer: order.customerName,
           phone: order.customerPhone || 'N/A',
           avatar: order.customerName.substring(0, 2).toUpperCase(),
-          date: order.date,
-          total: new Intl.NumberFormat('vi-VN').format(order.totalAmount) + ' đ',
-          status: order.orderStatus === 'DELIVERED' ? 'HOÀN THÀNH' : 'CHỜ XÁC NHẬN',
-          rawStatus: order.orderStatus
+          date: new Date(order.createAt || order.date).toLocaleDateString('vi-VN'),
+          total: order.totalAmount,
+          rawStatus: order.orderStatus,
+          status: mapStatus(order.orderStatus)
         }));
 
         setOrders(mappedOrders);
-
-        // Update stats
-        setStats({
-          total: data.length,
-          pending: data.filter(o => o.orderStatus !== 'DELIVERED').length,
-          shipping: 0, // Placeholder
-          revenue: (data.reduce((sum, o) => sum + o.totalAmount, 0) / 1000000).toFixed(1) + 'M'
-        });
       } catch (err) {
         console.error("Lỗi khi tải đơn hàng:", err);
       } finally {
@@ -52,27 +194,218 @@ const OrderManagement = () => {
     fetchData();
   }, []);
 
-  // Filter orders by tab
-  const filteredOrders = orders.filter(order => {
-    if (activeTab === 'Tất cả') return true;
-    if (activeTab === 'Chờ xác nhận') return order.status === 'CHỜ XÁC NHẬN';
-    if (activeTab === 'Hoàn thành') return order.status === 'HOÀN THÀNH';
-    return true; 
-  });
+  const mapStatus = (status) => {
+    switch (status) {
+      case 'PENDING': return 'CHỜ XÁC NHẬN';
+      case 'SHIPPING': return 'ĐANG GIAO';
+      case 'DELIVERED': return 'HOÀN THÀNH';
+      case 'CANCELLED': return 'ĐÃ HỦY';
+      default: return status;
+    }
+  };
+
+  const filteredByTimeOrders = useMemo(() => {
+    return orders.filter(o => {
+      const rawDateStr = o.orderDate || o.date.split('/').reverse().join('-');
+      const d = new Date(rawDateStr);
+      if (isNaN(d.getTime())) return false;
+
+      if (timeframe === 'daily') {
+        const [y, m] = filterDate.split('-').map(Number);
+        return d.getFullYear() === y && (d.getMonth() + 1) === m && d.getDate() === selectedDay;
+      }
+      if (timeframe === 'weekly') {
+        const [y, w] = filterWeek.split('-W').map(Number);
+        const getWeek = (date) => {
+          const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+          const dayNum = d.getUTCDay() || 7;
+          d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+          const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+          return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+        };
+        return d.getFullYear() === y && getWeek(d) === w;
+      }
+      if (timeframe === 'monthly') {
+        return d.getFullYear() === filterYear;
+      }
+      if (timeframe === 'yearly') {
+        return d.getFullYear() > (now.getFullYear() - filterYearsCount);
+      }
+      return true;
+    });
+  }, [orders, timeframe, filterDate, filterWeek, filterYear, selectedDay, filterYearsCount]);
+
+  const dynamicStats = useMemo(() => {
+    const currentOrders = filteredByTimeOrders;
+    
+    let previousOrders = [];
+    let comparisonLabel = "";
+
+    if (timeframe === 'daily') {
+      const [y, m] = filterDate.split('-').map(Number);
+      const prevDayDate = new Date(y, m - 1, selectedDay);
+      prevDayDate.setDate(prevDayDate.getDate() - 1);
+      
+      previousOrders = orders.filter(o => {
+        const rawDateStr = o.orderDate || o.date.split('/').reverse().join('-');
+        const d = new Date(rawDateStr);
+        return !isNaN(d.getTime()) && 
+               d.getFullYear() === prevDayDate.getFullYear() && 
+               (d.getMonth() + 1) === (prevDayDate.getMonth() + 1) && 
+               d.getDate() === prevDayDate.getDate();
+      });
+      comparisonLabel = "So với hôm qua";
+    } else if (timeframe === 'weekly') {
+      const [y, w] = filterWeek.split('-W').map(Number);
+      let prevY = y, prevW = w - 1;
+      if (prevW === 0) { prevY--; prevW = 52; }
+
+      previousOrders = orders.filter(o => {
+        const rawDateStr = o.orderDate || o.date.split('/').reverse().join('-');
+        const d = new Date(rawDateStr);
+        const getWeek = (date) => {
+          const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+          const dayNum = d.getUTCDay() || 7;
+          d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+          const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+          return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+        };
+        return !isNaN(d.getTime()) && d.getFullYear() === prevY && getWeek(d) === prevW;
+      });
+      comparisonLabel = "So với tuần trước";
+    } else if (timeframe === 'monthly') {
+      previousOrders = orders.filter(o => {
+        const rawDateStr = o.orderDate || o.date.split('/').reverse().join('-');
+        const d = new Date(rawDateStr);
+        return !isNaN(d.getTime()) && d.getFullYear() === (filterYear - 1);
+      });
+      comparisonLabel = "So với năm trước";
+    } else if (timeframe === 'yearly') {
+      const currentRangeStart = now.getFullYear() - filterYearsCount;
+      const prevRangeStart = currentRangeStart - filterYearsCount;
+      previousOrders = orders.filter(o => {
+        const rawDateStr = o.orderDate || o.date.split('/').reverse().join('-');
+        const d = new Date(rawDateStr);
+        return !isNaN(d.getTime()) && d.getFullYear() > prevRangeStart && d.getFullYear() <= currentRangeStart;
+      });
+      comparisonLabel = `So với ${filterYearsCount} năm trước`;
+    }
+
+    const calculateStatsForList = (list) => {
+      const valid = list.filter(o => o.rawStatus !== 'CANCELLED');
+      const revenue = valid.reduce((sum, o) => sum + (o.total || o.totalAmount || 0), 0);
+      const total = list.length;
+      const pending = list.filter(o => o.rawStatus === 'PENDING').length;
+      const shipping = list.filter(o => o.rawStatus === 'SHIPPING').length;
+      return { total, pending, shipping, revenue };
+    };
+
+    const currentPeriod = calculateStatsForList(currentOrders);
+    const prevPeriod = calculateStatsForList(previousOrders);
+
+    const calculateGrowth = (curr, prev) => {
+      if (prev === 0) return { percent: curr > 0 ? "100" : "0", isUp: curr > 0 };
+      const p = ((curr - prev) / prev) * 100;
+      return { 
+        percent: Math.abs(p).toFixed(1), 
+        isUp: p >= 0
+      };
+    };
+
+    return {
+      total: currentPeriod.total,
+      pending: currentPeriod.pending,
+      shipping: currentPeriod.shipping,
+      revenue: currentPeriod.revenue,
+      totalGrowth: { ...calculateGrowth(currentPeriod.total, prevPeriod.total), prevValue: prevPeriod.total, label: comparisonLabel },
+      pendingGrowth: { ...calculateGrowth(currentPeriod.pending, prevPeriod.pending), prevValue: prevPeriod.pending, label: comparisonLabel },
+      shippingGrowth: { ...calculateGrowth(currentPeriod.shipping, prevPeriod.shipping), prevValue: prevPeriod.shipping, label: comparisonLabel },
+      revenueGrowth: { ...calculateGrowth(currentPeriod.revenue, prevPeriod.revenue), prevValue: prevPeriod.revenue, label: comparisonLabel }
+    };
+  }, [orders, filteredByTimeOrders, timeframe, filterDate, filterWeek, filterYear, selectedDay, filterYearsCount]);
+
+  const stats = dynamicStats;
+
+  const getTimeframeText = () => {
+    if (timeframe === 'daily') {
+      const [y, m] = filterDate.split('-').map(Number);
+      return `ngày ${selectedDay}/${m}/${y}`;
+    }
+    if (timeframe === 'weekly') {
+      const [y, w] = filterWeek.split('-W').map(Number);
+      return `tuần ${w}, ${y}`;
+    }
+    if (timeframe === 'monthly') return `12 tháng năm ${filterYear}`;
+    if (timeframe === 'yearly') return `${filterYearsCount} năm qua`;
+    return 'Toàn thời gian';
+  };
+
+  const filteredOrders = useMemo(() => {
+    const result = filteredByTimeOrders.filter(order => {
+      const matchesTab = activeTab === 'Tất cả' || order.status === activeTab.toUpperCase();
+      const matchesSearch = 
+        order.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        order.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.phone.includes(searchQuery);
+      return matchesTab && matchesSearch;
+    });
+
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        if (sortConfig.key === 'id') {
+          const idA = extractIdNumber(a.id);
+          const idB = extractIdNumber(b.id);
+          return sortConfig.direction === 'asc' ? idA - idB : idB - idA;
+        }
+        if (sortConfig.key === 'customer') {
+          const comp = a.customer.localeCompare(b.customer, 'vi');
+          return sortConfig.direction === 'asc' ? comp : -comp;
+        }
+        if (sortConfig.key === 'date') {
+          const datePartsA = a.date.split('/');
+          const datePartsB = b.date.split('/');
+          const dateA = new Date(`${datePartsA[2]}-${datePartsA[1]}-${datePartsA[0]}`);
+          const dateB = new Date(`${datePartsB[2]}-${datePartsB[1]}-${datePartsB[0]}`);
+          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+        }
+        if (sortConfig.key === 'total') {
+          const totalA = Number(a.total) || 0;
+          const totalB = Number(b.total) || 0;
+          return sortConfig.direction === 'asc' ? totalA - totalB : totalB - totalA;
+        }
+        return 0;
+      });
+    }
+    return result;
+  }, [orders, activeTab, searchQuery, sortConfig]);
+
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = useMemo(() => {
+    return filteredOrders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  }, [filteredOrders, currentPage]);
 
   const getStatusBadge = (status) => {
+    const badgeStyle = {
+      fontSize: 'clamp(8px, 0.75vw, 10px)',
+      padding: 'clamp(3px, 0.4vw, 5px) clamp(8px, 0.8vw, 12px)'
+    };
     switch (status) {
       case 'CHỜ XÁC NHẬN':
-        return <span className="px-3 py-1 bg-orange-100 text-orange-700 text-[10px] font-bold rounded-full">CHỜ XÁC NHẬN</span>;
+        return <span style={badgeStyle} className="bg-orange-50 text-orange-600 font-black rounded-lg border border-orange-100 uppercase tracking-tighter whitespace-nowrap">CHỜ XÁC NHẬN</span>;
       case 'ĐANG GIAO':
-        return <span className="px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full">ĐANG GIAO</span>;
+        return <span style={badgeStyle} className="bg-blue-50 text-blue-600 font-black rounded-lg border border-blue-100 uppercase tracking-tighter whitespace-nowrap">ĐANG GIAO</span>;
       case 'HOÀN THÀNH':
-        return <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full">HOÀN THÀNH</span>;
+        return <span style={badgeStyle} className="bg-emerald-50 text-emerald-600 font-black rounded-lg border border-emerald-100 uppercase tracking-tighter whitespace-nowrap">HOÀN THÀNH</span>;
       case 'ĐÃ HỦY':
-        return <span className="px-3 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-full">ĐÃ HỦY</span>;
+        return <span style={badgeStyle} className="bg-red-50 text-red-600 font-black rounded-lg border border-red-100 uppercase tracking-tighter whitespace-nowrap">ĐÃ HỦY</span>;
       default:
-        return <span className="px-3 py-1 bg-gray-100 text-gray-700 text-[10px] font-bold rounded-full">{status}</span>;
+        return <span style={badgeStyle} className="bg-slate-50 text-slate-600 font-black rounded-lg border border-slate-100 uppercase tracking-tighter whitespace-nowrap">{status}</span>;
     }
+  };
+
+  const handleViewOrder = (order) => {
+    setSelectedOrder(order);
+    setIsDrawerOpen(true);
   };
 
   if (isCreating) {
@@ -81,141 +414,473 @@ const OrderManagement = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00288E]"></div>
+      <div className="flex flex-col items-center justify-center h-full gap-4">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Đang tải dữ liệu đơn hàng...</p>
       </div>
     );
   }
 
   return (
-    <div className="font-inter flex flex-col w-full h-full bg-slate-50 animate-fade-in gap-4 md:gap-6">
-      <div className="flex justify-between items-start shrink-0 px-2 md:px-0">
-        <div>
-          <h1 className="text-3xl sm:text-4xl lg:text-[2rem] font-black text-slate-900 uppercase tracking-tight leading-tight">Quản lý Đơn hàng</h1>
-          <p className="text-sm sm:text-base text-slate-600 font-medium mt-1 max-w-lg leading-relaxed">
-            Theo dõi và xử lý các đơn hàng trong hệ thống.
+    <div className="font-inter flex flex-col w-full h-full bg-slate-50 animate-fade-in gap-4 md:gap-6 pb-6">
+      
+      {/* 1. Header Section */}
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 px-2 md:px-0 shrink-0">
+        <div className="space-y-1 sm:space-y-2">
+          <h1 className="font-black text-slate-900 uppercase tracking-tight leading-tight"
+              style={{ fontSize: 'clamp(20px, 1.8vw, 32px)' }}>Quản lý đơn hàng</h1>
+          <p className="text-slate-500 flex items-center gap-2 font-medium"
+             style={{ fontSize: 'clamp(10px, 0.9vw, 14px)' }}>
+            Hệ thống đang kiểm soát 
+            <span className="text-[#00288E] font-bold bg-blue-50 px-2.5 py-1 rounded-lg animate-fade-in" key={getTimeframeText()}>
+              {getTimeframeText()} ({filteredOrders.length} đơn hàng)
+            </span>
           </p>
         </div>
-        
-        <div className="flex gap-3">
-          <button className="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-50 flex items-center gap-2 shadow-sm transition-all">
-            <span className="material-symbols-outlined text-xl">download</span> Xuất Excel
-          </button>
+
+        <div className="flex flex-col sm:flex-row xl:items-center gap-3 w-full xl:w-auto" style={{ gap: 'clamp(6px, 0.7vw, 14px)' }}>
+          {/* Timeframe Switcher */}
+          <div className="flex bg-slate-100 border border-slate-300/50 shadow-inner w-full sm:w-max animate-fade-in" 
+               style={{
+                 padding: 'clamp(2px, 0.25vw, 4px)',
+                 borderRadius: 'clamp(8px, 0.9vw, 16px)'
+               }}
+               role="tablist">
+            {['daily', 'weekly', 'monthly', 'yearly'].map((tf) => (
+              <button 
+                key={tf} 
+                onClick={() => setTimeframe(tf)}
+                role="tab"
+                aria-selected={timeframe === tf}
+                className={`flex-1 transition-[background-color,color,box-shadow,transform] duration-300 whitespace-nowrap touch-manipulation ${timeframe === tf ? 'bg-white text-[#00288E] shadow-md scale-105' : 'text-slate-500 hover:text-slate-900'}`}
+                style={{
+                  padding: 'clamp(4px, 0.5vw, 10px) clamp(8px, 1vw, 20px)',
+                  fontSize: 'clamp(8px, 0.75vw, 11px)',
+                  borderRadius: 'clamp(6px, 0.7vw, 12px)',
+                  fontWeight: 900,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em'
+                }}>
+                {tf === 'daily' ? 'Ngày' : tf === 'weekly' ? 'Tuần' : tf === 'monthly' ? 'Tháng' : 'Năm'}
+              </button>
+            ))}
+          </div>
           
-          <button 
-            onClick={() => setIsCreating(true)}
-            className="bg-[#00288E] hover:bg-[#00288E]/90 text-white px-5 py-2.5 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2 whitespace-nowrap"
-          >
-            <span className="material-symbols-outlined text-xl">add_circle</span> Tạo đơn mới
-          </button>
+          {/* Sub-filters dynamically displayed based on timeframe */}
+          <div className="flex items-center animate-fade-in relative z-50" style={{ gap: 'clamp(4px, 0.5vw, 12px)' }}>
+            {timeframe === 'daily' && (() => {
+              const [y, m] = filterDate.split('-').map(Number);
+              return (
+                <div className="flex items-center bg-white border border-slate-300 shadow-sm"
+                     style={{
+                       padding: 'clamp(2px, 0.25vw, 4px)',
+                       borderRadius: 'clamp(6px, 0.7vw, 12px)',
+                       gap: 'clamp(2px, 0.25vw, 4px)'
+                     }}
+                     ref={datePickerRef}>
+                  <button onClick={() => { let newM = m - 1; let newY = y; if (newM < 1) { newM = 12; newY--; } setFilterDate(`${newY}-${String(newM).padStart(2, '0')}`); }} 
+                          className="hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 touch-manipulation"
+                          style={{
+                            width: 'clamp(20px, 2vw, 28px)',
+                            height: 'clamp(20px, 2vw, 28px)',
+                            borderRadius: 'clamp(4px, 0.4vw, 8px)'
+                          }}
+                          aria-label="Tháng trước">
+                    <span className="material-symbols-outlined" style={{ fontSize: 'clamp(10px, 1.1vw, 16px)' }} aria-hidden="true">chevron_left</span>
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setDateTempYear(y); setShowDatePicker(!showDatePicker); setDatePickerView('months'); }} 
+                          className={`transition-all flex items-center hover:bg-slate-50 ${showDatePicker ? 'bg-slate-50 shadow-inner' : ''}`}
+                          style={{
+                            padding: 'clamp(3px, 0.35vw, 6px) clamp(6px, 0.75vw, 12px)',
+                            borderRadius: 'clamp(4px, 0.4vw, 8px)',
+                            gap: 'clamp(4px, 0.4vw, 8px)'
+                          }}>
+                    <span className="font-black text-slate-900 uppercase tracking-widest" style={{ fontSize: 'clamp(8px, 0.8vw, 11px)' }}>Tháng {m}, {y}</span>
+                    <span className={`material-symbols-outlined text-slate-300 transition-transform ${showDatePicker ? 'rotate-180 text-blue-600' : ''}`} style={{ fontSize: 'clamp(9px, 0.9vw, 14px)' }}>expand_more</span>
+                  </button>
+                  {showDatePicker && (
+                    <div className="absolute top-full mt-2 right-0 z-[100] bg-white shadow-2xl rounded-2xl border border-slate-100 p-5 min-w-[320px] animate-fade-in origin-top-right">
+                      {datePickerView === 'months' ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between border-b border-slate-50 pb-3"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chọn tháng</span><button onClick={(e) => { e.stopPropagation(); setDatePickerView('years'); setDateYearRangeStart(Math.floor(dateTempYear / 12) * 12); }} className="flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-lg border border-blue-100 text-[12px] font-black text-blue-600 uppercase">{dateTempYear} <span className="material-symbols-outlined text-[14px]">arrow_forward</span></button></div>
+                          <div className="grid grid-cols-3 gap-2">{monthNames.map((mName, idx) => (<button key={mName} onClick={() => { setFilterDate(`${dateTempYear}-${String(idx + 1).padStart(2, '0')}`); setShowDatePicker(false); }} className={`text-[10px] font-black py-2.5 rounded-xl transition-all ${(idx + 1) === m && dateTempYear === y ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-50'}`}>{mName}</button>))}</div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 animate-fade-in">
+                          <div className="flex items-center justify-between border-b border-slate-50 pb-3"><div className="flex items-center gap-2"><button onClick={(e) => { e.stopPropagation(); setDatePickerView('months'); }} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-50 text-slate-400 hover:text-blue-600"><span className="material-symbols-outlined text-[18px]">arrow_back</span></button><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chọn Năm</span></div><div className="flex items-center gap-1 bg-slate-50 p-0.5 rounded-lg"><button onClick={(e) => { e.stopPropagation(); setDateYearRangeStart(prev => prev - 12); }} className="w-6 h-6 rounded flex items-center justify-center hover:bg-white text-blue-600"><span className="material-symbols-outlined text-[16px]">chevron_left</span></button><span className="text-[9px] font-black text-slate-500 px-1">{dateYearRangeStart} - {dateYearRangeStart + 11}</span><button onClick={(e) => { e.stopPropagation(); setDateYearRangeStart(prev => prev + 12); }} className="w-6 h-6 rounded flex items-center justify-center hover:bg-white text-blue-600"><span className="material-symbols-outlined text-[16px]">chevron_right</span></button></div></div>
+                          <div className="grid grid-cols-3 gap-2">{Array.from({length: 12}).map((_, i) => { const yearOpt = dateYearRangeStart + i; return (<button key={yearOpt} onClick={(e) => { e.stopPropagation(); setDateTempYear(yearOpt); setDatePickerView('months'); }} className={`text-[11px] font-black py-3 rounded-xl transition-all ${yearOpt === dateTempYear ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>{yearOpt}</button>); })}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <button onClick={() => { let newM = m + 1; let newY = y; if (newM > 12) { newM = 1; newY++; } setFilterDate(`${newY}-${String(newM).padStart(2, '0')}`); }} 
+                          className="hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 touch-manipulation"
+                          style={{
+                            width: 'clamp(20px, 2vw, 28px)',
+                            height: 'clamp(20px, 2vw, 28px)',
+                            borderRadius: 'clamp(4px, 0.4vw, 8px)'
+                          }}
+                          aria-label="Tháng tiếp theo">
+                    <span className="material-symbols-outlined" style={{ fontSize: 'clamp(10px, 1.1vw, 16px)' }} aria-hidden="true">chevron_right</span>
+                  </button>
+                </div>
+              );
+            })()}
+            {timeframe === 'weekly' && (
+              <div className="flex items-center bg-white border border-slate-300 shadow-sm"
+                   style={{
+                     padding: 'clamp(2px, 0.25vw, 4px)',
+                     borderRadius: 'clamp(6px, 0.7vw, 12px)',
+                     gap: 'clamp(2px, 0.25vw, 4px)'
+                   }}
+                   ref={weekPickerRef}>
+                <button onClick={() => { const [y, w] = filterWeek.split('-W').map(Number); let newW = w - 1; let newY = y; if (newW < 1) { newY--; newW = 52; } setFilterWeek(`${newY}-W${String(newW).padStart(2, '0')}`); }} 
+                        className="hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 touch-manipulation"
+                        style={{
+                          width: 'clamp(20px, 2vw, 28px)',
+                          height: 'clamp(20px, 2vw, 28px)',
+                          borderRadius: 'clamp(4px, 0.4vw, 8px)'
+                        }}
+                        aria-label="Tuần trước">
+                  <span className="material-symbols-outlined" style={{ fontSize: 'clamp(10px, 1.1vw, 16px)' }} aria-hidden="true">chevron_left</span>
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setShowWeekPicker(!showWeekPicker); }} 
+                        className={`transition-all flex items-center hover:bg-slate-50 ${showWeekPicker ? 'bg-slate-50 shadow-inner' : ''}`}
+                        style={{
+                          padding: 'clamp(3px, 0.35vw, 6px) clamp(6px, 0.75vw, 12px)',
+                          borderRadius: 'clamp(4px, 0.4vw, 8px)',
+                          gap: 'clamp(4px, 0.4vw, 8px)'
+                        }}>
+                  <span className="font-black text-slate-900 uppercase tracking-widest" style={{ fontSize: 'clamp(8px, 0.8vw, 11px)' }}>{filterWeek.replace('-W', ', Tuần ')}</span>
+                  <span className={`material-symbols-outlined text-slate-300 transition-transform ${showWeekPicker ? 'rotate-180 text-blue-600' : ''}`} style={{ fontSize: 'clamp(9px, 0.9vw, 14px)' }}>expand_more</span>
+                </button>
+                {showWeekPicker && (
+                  <div className="absolute top-full mt-2 right-0 z-[100] bg-white shadow-2xl rounded-2xl border border-slate-100 p-4 min-w-[260px] animate-fade-in origin-top-right">
+                    <div className="flex items-center justify-between mb-3 border-b border-slate-50 pb-2"><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chọn Tuần</span><span className="text-[10px] font-bold text-blue-600">{filterWeek.split('-W')[0]}</span></div>
+                    <div className="max-h-[300px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
+                      <div className="flex flex-col gap-1">{[...Array(52)].map((_, i) => { const weekNum = i + 1; const currentY = filterWeek.split('-W')[0]; const weekStr = `${currentY}-W${String(weekNum).padStart(2, '0')}`; return (<button key={i} onClick={() => { setFilterWeek(weekStr); setShowWeekPicker(false); }} className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${filterWeek === weekStr ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-50 text-slate-600'}`}><div className="flex flex-col items-start"><span className="text-[10px] font-black uppercase tracking-tight">Tuần {weekNum}</span><span className={`text-[8px] font-bold ${filterWeek === weekStr ? 'text-blue-100' : 'text-slate-400'}`}>{getWeekRange(currentY, weekNum)}</span></div>{filterWeek === weekStr && <span className="material-symbols-outlined text-[16px]">check_circle</span>}</button>); })}</div>
+                    </div>
+                  </div>
+                )}
+                <button onClick={() => { const [y, w] = filterWeek.split('-W').map(Number); let newW = w + 1; let newY = y; if (newW > 52) { newY++; newW = 1; } setFilterWeek(`${newY}-W${String(newW).padStart(2, '0')}`); }} 
+                        className="hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 touch-manipulation"
+                        style={{
+                          width: 'clamp(20px, 2vw, 28px)',
+                          height: 'clamp(20px, 2vw, 28px)',
+                          borderRadius: 'clamp(4px, 0.4vw, 8px)'
+                        }}
+                        aria-label="Tuần tiếp theo">
+                  <span className="material-symbols-outlined" style={{ fontSize: 'clamp(10px, 1.1vw, 16px)' }} aria-hidden="true">chevron_right</span>
+                </button>
+              </div>
+            )}
+            {timeframe === 'monthly' && (
+              <div className="flex items-center bg-white border border-slate-300 shadow-sm"
+                   style={{
+                     padding: 'clamp(2px, 0.25vw, 4px)',
+                     borderRadius: 'clamp(6px, 0.7vw, 12px)',
+                     gap: 'clamp(2px, 0.25vw, 4px)'
+                   }}
+                   ref={yearPickerRef}>
+                <button onClick={() => setFilterYear(prev => prev - 1)} 
+                        className="hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 touch-manipulation"
+                        style={{
+                          width: 'clamp(20px, 2vw, 28px)',
+                          height: 'clamp(20px, 2vw, 28px)',
+                          borderRadius: 'clamp(4px, 0.4vw, 8px)'
+                        }}
+                        aria-label="Năm trước">
+                  <span className="material-symbols-outlined" style={{ fontSize: 'clamp(10px, 1.1vw, 16px)' }} aria-hidden="true">chevron_left</span>
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setShowYearPicker(!showYearPicker); }} 
+                        className={`transition-all flex items-center hover:bg-slate-50 ${showYearPicker ? 'bg-slate-50 shadow-inner' : ''}`}
+                        style={{
+                          padding: 'clamp(3px, 0.35vw, 6px) clamp(8px, 0.9vw, 16px)',
+                          borderRadius: 'clamp(4px, 0.4vw, 8px)',
+                          gap: 'clamp(4px, 0.4vw, 8px)'
+                        }}>
+                  <span className="font-black text-slate-900 uppercase tracking-widest" style={{ fontSize: 'clamp(8px, 0.8vw, 11px)' }}>Năm {filterYear}</span>
+                  <span className={`material-symbols-outlined text-slate-300 transition-transform ${showYearPicker ? 'rotate-180 text-blue-600' : ''}`} style={{ fontSize: 'clamp(9px, 0.9vw, 14px)' }}>expand_more</span>
+                </button>
+                {showYearPicker && (
+                  <div className="absolute top-full mt-2 right-0 z-[100] bg-white shadow-2xl rounded-2xl border border-slate-100 p-4 min-w-[220px] animate-fade-in origin-top-right">
+                    <div className="flex items-center justify-between mb-3 border-b border-slate-50 pb-2"><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Chọn Năm</span><div className="flex items-center gap-1 bg-slate-50 p-0.5 rounded-lg"><button onClick={(e) => { e.stopPropagation(); setYearRangeStart(prev => prev - 10); }} className="w-6 h-6 rounded flex items-center justify-center hover:bg-white text-blue-600"><span className="material-symbols-outlined text-[16px]">chevron_left</span></button><span className="text-[8px] font-black text-slate-500 px-1">{yearRangeStart} - {yearRangeStart + 9}</span><button onClick={(e) => { e.stopPropagation(); setYearRangeStart(prev => prev + 10); }} className="w-6 h-6 rounded flex items-center justify-center hover:bg-white text-blue-600"><span className="material-symbols-outlined text-[16px]">chevron_right</span></button></div></div>
+                    <div className="grid grid-cols-2 gap-2">{[...Array(10)].map((_, i) => { const y = yearRangeStart + i; return (<button key={y} onClick={() => { setFilterYear(y); setShowYearPicker(false); }} className={`text-[10px] font-black py-2.5 rounded-xl transition-all ${filterYear === y ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-50 text-slate-500'}`}>{y}</button>); })}</div>
+                  </div>
+                )}
+                <button onClick={() => { if (filterYear < now.getFullYear()) setFilterYear(prev => prev + 1); }} 
+                        disabled={filterYear >= now.getFullYear()} 
+                        className="hover:bg-slate-50 disabled:opacity-30 flex items-center justify-center text-slate-400 hover:text-blue-600 touch-manipulation"
+                        style={{
+                          width: 'clamp(20px, 2vw, 28px)',
+                          height: 'clamp(20px, 2vw, 28px)',
+                          borderRadius: 'clamp(4px, 0.4vw, 8px)'
+                        }}
+                        aria-label="Năm tiếp theo">
+                  <span className="material-symbols-outlined" style={{ fontSize: 'clamp(10px, 1.1vw, 16px)' }} aria-hidden="true">chevron_right</span>
+                </button>
+              </div>
+            )}
+            {timeframe === 'yearly' && (
+              <div className="flex items-center bg-white border border-slate-300 shadow-sm"
+                   style={{
+                     padding: 'clamp(2px, 0.25vw, 4px)',
+                     borderRadius: 'clamp(6px, 0.7vw, 12px)',
+                     gap: 'clamp(2px, 0.25vw, 4px)'
+                   }}
+                   ref={yearsCountPickerRef}>
+                <button onClick={() => { const opts = [3, 5, 10, 20]; setFilterYearsCount(opts[Math.max(0, opts.indexOf(filterYearsCount) - 1)]); }} 
+                        className="hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 touch-manipulation"
+                        style={{
+                          width: 'clamp(20px, 2vw, 28px)',
+                          height: 'clamp(20px, 2vw, 28px)',
+                          borderRadius: 'clamp(4px, 0.4vw, 8px)'
+                        }}
+                        aria-label="Giảm số năm">
+                  <span className="material-symbols-outlined" style={{ fontSize: 'clamp(10px, 1.1vw, 16px)' }} aria-hidden="true">chevron_left</span>
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setShowYearsCountPicker(!showYearsCountPicker); }} 
+                        className={`transition-all flex items-center hover:bg-slate-50 ${showYearsCountPicker ? 'bg-slate-50 shadow-inner' : ''}`}
+                        style={{
+                          padding: 'clamp(3px, 0.35vw, 6px) clamp(8px, 0.9vw, 16px)',
+                          borderRadius: 'clamp(4px, 0.4vw, 8px)',
+                          gap: 'clamp(4px, 0.4vw, 8px)'
+                        }}>
+                  <span className="font-black text-slate-900 uppercase tracking-widest" style={{ fontSize: 'clamp(8px, 0.8vw, 11px)' }}>{filterYearsCount} Năm qua</span>
+                  <span className={`material-symbols-outlined text-slate-300 transition-transform ${showYearsCountPicker ? 'rotate-180 text-blue-600' : ''}`} style={{ fontSize: 'clamp(9px, 0.9vw, 14px)' }}>expand_more</span>
+                </button>
+                {showYearsCountPicker && (
+                  <div className="absolute top-full mt-2 right-0 z-[100] bg-white shadow-2xl rounded-2xl border border-slate-100 p-4 min-w-[160px] animate-fade-in origin-top-right">
+                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-50 pb-2">Số lượng năm</div>
+                    <div className="flex flex-col gap-1">{[3, 5, 10, 20].map((v) => (<button key={v} onClick={() => { setFilterYearsCount(v); setShowYearsCountPicker(false); }} className={`px-3 py-2.5 rounded-xl text-left transition-all flex justify-between items-center ${filterYearsCount === v ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-50 text-slate-600'}`}><span className="text-[10px] font-black uppercase tracking-tight">{v} Năm</span>{filterYearsCount === v && <span className="material-symbols-outlined text-[16px]">check</span>}</button>))}</div>
+                  </div>
+                )}
+                <button onClick={() => { const opts = [3, 5, 10, 20]; setFilterYearsCount(opts[Math.min(opts.length - 1, opts.indexOf(filterYearsCount) + 1)]); }} 
+                        className="hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 touch-manipulation"
+                        style={{
+                          width: 'clamp(20px, 2vw, 28px)',
+                          height: 'clamp(20px, 2vw, 28px)',
+                          borderRadius: 'clamp(4px, 0.4vw, 8px)'
+                        }}
+                        aria-label="Tăng số năm">
+                  <span className="material-symbols-outlined" style={{ fontSize: 'clamp(10px, 1.1vw, 16px)' }} aria-hidden="true">chevron_right</span>
+                </button>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex w-full sm:w-auto shrink-0" style={{ gap: 'clamp(4px, 0.5vw, 12px)' }}>
+            <button 
+              className="flex-1 sm:flex-none bg-white border-2 border-slate-100 text-slate-400 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-50 hover:text-slate-600 transition-all flex items-center justify-center active:scale-95 whitespace-nowrap"
+              style={{
+                padding: 'clamp(8px, 0.9vw, 16px) clamp(16px, 1.8vw, 32px)',
+                fontSize: 'clamp(9px, 0.75vw, 12px)',
+                borderRadius: 'clamp(8px, 0.9vw, 16px)',
+                gap: 'clamp(6px, 0.6vw, 12px)'
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 'clamp(14px, 1.2vw, 18px)' }}>download</span>
+              Xuất báo cáo
+            </button>
+            
+            <button 
+              onClick={() => setIsCreating(true)}
+              className="flex-1 sm:flex-none group flex items-center justify-center bg-[#00288E] hover:bg-white text-white hover:text-[#00288E] rounded-2xl font-black uppercase tracking-widest transition-all duration-300 shadow-lg shadow-blue-900/10 border-2 border-[#00288E] active:scale-95 whitespace-nowrap"
+              style={{
+                padding: 'clamp(8px, 0.9vw, 16px) clamp(20px, 2.2vw, 40px)',
+                fontSize: 'clamp(9px, 0.75vw, 12px)',
+                borderRadius: 'clamp(8px, 0.9vw, 16px)',
+                gap: 'clamp(6px, 0.6vw, 12px)'
+              }}
+            >
+              <span className="material-symbols-outlined group-hover:rotate-90 transition-transform duration-500" style={{ fontSize: 'clamp(14px, 1.2vw, 18px)' }}>shopping_cart_checkout</span>
+              Tạo đơn hàng
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 pr-1 md:pr-2 pb-4">
-        <div className="flex flex-col gap-4 mx-2 md:mx-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-300 hover:shadow-xl hover:-translate-y-1 hover:border-blue-500 transition-all duration-300 cursor-pointer">
-              <p className="text-slate-500 text-xs font-semibold tracking-wider mb-2 uppercase">TỔNG ĐƠN HÀNG</p>
-              <div className="flex items-end gap-3">
-                <span className="text-3xl font-bold text-[#00288E] font-manrope">{stats.total}</span>
-                <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded text-xs font-medium mb-1">+12.5%</span>
-              </div>
-            </div>
-            
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-300 hover:shadow-xl hover:-translate-y-1 hover:border-blue-500 transition-all duration-300 cursor-pointer">
-              <p className="text-slate-500 text-xs font-semibold tracking-wider mb-2 uppercase">CHỜ XÁC NHẬN</p>
-              <div className="flex items-end gap-3">
-                <span className="text-3xl font-bold text-orange-700 font-manrope">{stats.pending}</span>
-                <span className="text-orange-700 bg-orange-50 px-2 py-1 rounded text-xs font-medium mb-1">Cần xử lý</span>
-              </div>
-            </div>
+      {/* 2. Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-2 md:px-0">
+            <StatCard 
+              label="DOANH THU ƯỚC TÍNH" 
+              value={formatCurrency(stats.revenue, false, true)} 
+              rawValue={stats.revenue}
+              growth={stats.revenueGrowth}
+              type="currency"
+              icon="payments" 
+              color="emerald" 
+              idx={0}
+              activeTooltipIdx={activeTooltipIdx}
+              setActiveTooltipIdx={setActiveTooltipIdx}
+            />
+            <StatCard 
+              label="ĐANG GIAO HÀNG" 
+              value={stats.shipping} 
+              growth={stats.shippingGrowth}
+              icon="local_shipping" 
+              color="purple" 
+              idx={1}
+              activeTooltipIdx={activeTooltipIdx}
+              setActiveTooltipIdx={setActiveTooltipIdx}
+            />
+            <StatCard 
+              label="TỔNG ĐƠN HÀNG" 
+              value={stats.total} 
+              growth={stats.totalGrowth}
+              icon="shopping_bag" 
+              color="blue" 
+              idx={2}
+              activeTooltipIdx={activeTooltipIdx}
+              setActiveTooltipIdx={setActiveTooltipIdx}
+            />
+            <StatCard 
+              label="CHỜ XÁC NHẬN" 
+              value={stats.pending} 
+              growth={stats.pendingGrowth}
+              icon="pending_actions" 
+              color="orange" 
+              idx={3}
+              activeTooltipIdx={activeTooltipIdx}
+              setActiveTooltipIdx={setActiveTooltipIdx}
+            />
+      </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-300 hover:shadow-xl hover:-translate-y-1 hover:border-blue-500 transition-all duration-300 cursor-pointer">
-              <p className="text-slate-500 text-xs font-semibold tracking-wider mb-2 uppercase">ĐANG GIAO</p>
-              <div className="flex items-end gap-3">
-                <span className="text-3xl font-bold text-blue-600 font-manrope">{stats.shipping}</span>
-                <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded text-xs font-medium mb-1">Trên đường</span>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-300 hover:shadow-xl hover:-translate-y-1 hover:border-blue-500 transition-all duration-300 cursor-pointer">
-              <p className="text-slate-500 text-xs font-semibold tracking-wider mb-2 uppercase">DOANH THU TỔNG</p>
-              <div className="flex items-end gap-2">
-                <span className="text-3xl font-bold text-slate-800 font-manrope">{stats.revenue}</span>
-                <span className="text-slate-500 text-sm font-medium mb-1">VNĐ</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-300 hover:shadow-xl hover:border-blue-500 transition-all duration-300 flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50/50">
-              <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
-                {tabs.map(tab => (
-                  <button 
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-all ${
-                      activeTab === tab 
-                        ? 'bg-[#00288E] text-white font-medium shadow-sm' 
-                        : 'bg-slate-200/50 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-3 w-full lg:w-auto">
-                <div className="relative flex-1 min-w-[250px]">
-                  <input 
-                    type="text" 
-                    placeholder="Tìm kiếm mã đơn, khách hàng..." 
-                    className="w-full bg-white border border-slate-200 text-sm rounded-lg pl-10 pr-4 py-2 outline-none focus:border-[#00288E] focus:ring-1 focus:ring-[#00288E]"
-                  />
-                  <span className="absolute left-3 top-2.5 opacity-40">🔍</span>
-                </div>
-              </div>
+      {/* 3. Separated Filter & Search Bar */}
+      <div className="bg-white rounded-xl sm:rounded-2xl p-6 border border-slate-300 shadow-sm flex flex-col lg:flex-row justify-between items-center gap-6 mx-2 md:mx-0 hover:border-blue-500 hover:shadow-xl transition-[border-color,box-shadow] duration-300">
+            <div className="relative w-full lg:w-[400px] group order-2 lg:order-1">
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm mã đơn, khách hàng..." 
+                className="w-full bg-slate-50 border-2 border-slate-200 text-sm font-bold rounded-xl pl-12 pr-4 py-4 outline-none focus:bg-white focus:border-[#00288E] transition-all text-slate-700 placeholder:text-slate-300"
+              />
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#00288E] transition-colors font-bold">search</span>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-slate-50/80 text-slate-500 text-xs font-semibold uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-300/50 shadow-inner w-full lg:w-max overflow-x-auto no-scrollbar order-1 lg:order-2">
+              {tabs.map(tab => (
+                <button 
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-5 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${
+                    activeTab === tab 
+                      ? 'bg-white text-blue-600 border-slate-200 shadow-sm' 
+                      : 'bg-transparent text-slate-500 border-transparent hover:text-slate-900'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+      </div>
+
+      {/* 4. Table Area Container */}
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-300 flex flex-col hover:border-blue-500 hover:shadow-xl transition-[border-color,box-shadow] duration-300 overflow-hidden mx-2 md:mx-0 flex-1 min-h-0">
+            {/* Table Area */}
+            <div className="overflow-auto flex-1 scrollbar-thin scrollbar-thumb-slate-200">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-6 py-4 border-b border-slate-100">MÃ ĐƠN</th>
-                    <th className="px-6 py-4 border-b border-slate-100">KHÁCH HÀNG</th>
-                    <th className="px-6 py-4 border-b border-slate-100">NGÀY ĐẶT</th>
-                    <th className="px-6 py-4 border-b border-slate-100">GIÁ TRỊ</th>
-                    <th className="px-6 py-4 border-b border-slate-100">TRẠNG THÁI</th>
-                    <th className="px-6 py-4 border-b border-slate-100 text-right">THAO TÁC</th>
+                    <th 
+                      onClick={() => handleSort('id')} 
+                      className="px-4 sm:px-6 py-4 font-black text-slate-400 uppercase tracking-widest border-b border-slate-300 cursor-pointer hover:text-[#00288E] transition-colors group"
+                      style={{ fontSize: 'clamp(8px, 0.8vw, 11px)' }}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Đơn hàng</span>
+                        <span className={`material-symbols-outlined text-[13px] transition-opacity ${sortConfig.key === 'id' ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'}`}>
+                          {sortConfig.key === 'id' && sortConfig.direction === 'asc' ? 'expand_less' : 'expand_more'}
+                        </span>
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('customer')} 
+                      className="px-4 sm:px-6 py-4 font-black text-slate-400 uppercase tracking-widest border-b border-slate-300 cursor-pointer hover:text-[#00288E] transition-colors group"
+                      style={{ fontSize: 'clamp(8px, 0.8vw, 11px)' }}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Khách hàng</span>
+                        <span className={`material-symbols-outlined text-[13px] transition-opacity ${sortConfig.key === 'customer' ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'}`}>
+                          {sortConfig.key === 'customer' && sortConfig.direction === 'asc' ? 'expand_less' : 'expand_more'}
+                        </span>
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('date')} 
+                      className="px-4 sm:px-6 py-4 font-black text-slate-400 uppercase tracking-widest border-b border-slate-300 cursor-pointer hover:text-[#00288E] transition-colors group"
+                      style={{ fontSize: 'clamp(8px, 0.8vw, 11px)' }}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Ngày đặt</span>
+                        <span className={`material-symbols-outlined text-[13px] transition-opacity ${sortConfig.key === 'date' ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'}`}>
+                          {sortConfig.key === 'date' && sortConfig.direction === 'asc' ? 'expand_less' : 'expand_more'}
+                        </span>
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleSort('total')} 
+                      className="px-4 sm:px-6 py-4 font-black text-slate-400 uppercase tracking-widest border-b border-slate-300 text-right cursor-pointer hover:text-[#00288E] transition-colors group"
+                      style={{ fontSize: 'clamp(8px, 0.8vw, 11px)' }}
+                    >
+                      <div className="flex items-center gap-1 justify-end">
+                        <span>Tổng tiền</span>
+                        <span className={`material-symbols-outlined text-[13px] transition-opacity ${sortConfig.key === 'total' ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'}`}>
+                          {sortConfig.key === 'total' && sortConfig.direction === 'asc' ? 'expand_less' : 'expand_more'}
+                        </span>
+                      </div>
+                    </th>
+                    <th className="px-4 sm:px-6 py-4 font-black text-slate-400 uppercase tracking-widest border-b border-slate-300" style={{ fontSize: 'clamp(8px, 0.8vw, 11px)' }}>Trạng thái</th>
+                    <th className="px-4 sm:px-6 py-4 font-black text-slate-400 uppercase tracking-widest border-b border-slate-300 text-right" style={{ fontSize: 'clamp(8px, 0.8vw, 11px)' }}>Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredOrders.length === 0 ? (
+                <tbody className="divide-y divide-slate-50">
+                  {paginatedOrders.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-6 py-10 text-center text-slate-400 italic">Không tìm thấy đơn hàng nào</td>
+                      <td colSpan="6" className="px-8 py-20 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <span className="material-symbols-outlined text-4xl text-slate-200">inventory</span>
+                          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest italic">Không tìm thấy đơn hàng nào phù hợp</p>
+                        </div>
+                      </td>
                     </tr>
-                  ) : filteredOrders.map((order, index) => (
-                    <tr key={index} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-[#00288E]">{order.id}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                  ) : paginatedOrders.map((order, index) => (
+                    <tr 
+                      key={index} 
+                      onClick={() => handleViewOrder(order)}
+                      className="group hover:bg-slate-50/50 transition-all cursor-pointer"
+                    >
+                      <td className="px-4 sm:px-6 py-4" style={{ padding: 'clamp(0.5rem, 1vw, 1.5rem)' }}>
+                        <span className="font-black text-blue-600 tracking-tighter group-hover:underline"
+                              style={{ fontSize: 'clamp(10px, 0.95vw, 13px)' }}>#{order.id}</span>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4" style={{ padding: 'clamp(0.5rem, 1vw, 1.5rem)' }}>
+                        <div className="flex items-center gap-4">
+                          <div className="rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black uppercase shadow-sm group-hover:scale-110 transition-transform"
+                               style={{ width: 'clamp(32px, 2.5vw, 44px)', height: 'clamp(32px, 2.5vw, 44px)', fontSize: 'clamp(10px, 0.9vw, 14px)' }}>
                             {order.avatar}
                           </div>
                           <div>
-                            <div className="font-semibold text-slate-800">{order.customer}</div>
-                            <div className="text-xs text-slate-500">{order.phone}</div>
+                            <div className="font-black text-slate-900 uppercase tracking-tight max-w-[40ch] lg:max-w-none break-words whitespace-normal"
+                                 style={{ fontSize: 'clamp(11px, 1vw, 14px)' }}>{order.customer}</div>
+                            <div className="font-bold text-slate-400 uppercase tracking-widest"
+                                 style={{ fontSize: 'clamp(8px, 0.75vw, 10px)' }}>{order.phone}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-600">{order.date}</td>
-                      <td className="px-6 py-4 font-semibold text-slate-800">{order.total}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 sm:px-6 py-4" style={{ padding: 'clamp(0.5rem, 1vw, 1.5rem)' }}>
+                        <span className="font-bold text-slate-500 uppercase"
+                              style={{ fontSize: 'clamp(10px, 0.85vw, 12px)' }}>{order.date}</span>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4" style={{ padding: 'clamp(0.5rem, 1vw, 1.5rem)', fontSize: 'clamp(10px, 0.9vw, 13px)' }}>{formatCurrency(order.total, true)}</td>
+                      <td className="px-4 sm:px-6 py-4" style={{ padding: 'clamp(0.5rem, 1vw, 1.5rem)' }}>
                         {getStatusBadge(order.status)}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <button className="text-slate-400 hover:text-[#00288E] transition-colors p-2 rounded-lg hover:bg-slate-100">
-                          •••
+                      <td className="px-4 sm:px-6 py-4 text-right" style={{ padding: 'clamp(0.5rem, 1vw, 1.5rem)' }}>
+                        <button className="rounded-xl bg-slate-50 text-slate-300 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center active:scale-95"
+                                style={{ width: 'clamp(28px, 2.5vw, 40px)', height: 'clamp(28px, 2.5vw, 40px)' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 'clamp(14px, 1.3vw, 20px)' }}>visibility</span>
                         </button>
                       </td>
                     </tr>
@@ -224,15 +889,169 @@ const OrderManagement = () => {
               </table>
             </div>
 
-            <div className="p-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
-              <div>Hiển thị 1-{filteredOrders.length} trong số {filteredOrders.length} đơn hàng</div>
-              <div className="flex gap-1">
-                <button className="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50">Trước</button>
-                <button className="px-3 py-1.5 bg-[#00288E] text-white rounded-lg shadow-sm">1</button>
-                <button className="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50">Sau</button>
-              </div>
+            {/* Pagination */}
+            <div className="p-4 border-t border-slate-100 flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0 bg-slate-50/50">
+              <span>
+                Hiển thị {filteredOrders.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} -{' '}
+                {Math.min(currentPage * ITEMS_PER_PAGE, filteredOrders.length)} / {filteredOrders.length} đơn hàng
+              </span>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all uppercase tracking-widest text-[9px]"
+                  >
+                    Trước
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                    <button 
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                        currentPage === p 
+                          ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' 
+                          : 'border border-slate-200 text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all uppercase tracking-widest text-[9px]"
+                  >
+                    Sau
+                  </button>
+                </div>
+              )}
             </div>
           </div>
+
+      <OrderDetailDrawer 
+        open={isDrawerOpen} 
+        onClose={() => setIsDrawerOpen(false)} 
+        order={selectedOrder} 
+      />
+    </div>
+  );
+};
+
+const getTooltipClasses = (idx) => {
+  // Left-aligned tooltip: displays on the right, points left
+  const leftAlign = "left-full top-0 ml-2.5 origin-top-left";
+  // Right-aligned tooltip: displays on the left, points right
+  const rightAlign = "right-full top-0 mr-2.5 origin-top-right";
+
+  if (idx === 0) {
+    return leftAlign;
+  } else if (idx === 3) {
+    return rightAlign;
+  } else if (idx === 1) {
+    return `${rightAlign} lg:right-auto lg:left-full lg:mr-0 lg:ml-2.5 lg:origin-top-left`;
+  } else if (idx === 2) {
+    return `${leftAlign} lg:left-auto lg:right-full lg:ml-0 lg:mr-2.5 lg:origin-top-right`;
+  }
+  return leftAlign;
+};
+
+const getArrowClasses = (idx) => {
+  const leftArrow = "-left-1 border-l border-b";
+  const rightArrow = "-right-1 border-t border-r";
+
+  if (idx === 0) {
+    return leftArrow;
+  } else if (idx === 3) {
+    return rightArrow;
+  } else if (idx === 1) {
+    return `${rightArrow} lg:right-auto lg:-left-1 lg:border-t-0 lg:border-r-0 lg:border-l lg:border-b`;
+  } else if (idx === 2) {
+    return `${leftArrow} lg:left-auto lg:-right-1 lg:border-l-0 lg:border-b-0 lg:border-t lg:border-r`;
+  }
+  return leftArrow;
+};
+
+const GrowthBadge = ({ growth, type = 'number', currentValue, idx, activeTooltipIdx }) => {
+  if (!growth) return null;
+  const { percent, isUp, prevValue, label } = growth;
+  
+  const tooltipPositionClass = getTooltipClasses(idx);
+  const arrowPositionClass = getArrowClasses(idx);
+  const isActive = activeTooltipIdx === idx;
+
+  return (
+    <div className="w-max group relative flex items-center gap-1 mt-1 cursor-help">
+      <div className={`flex items-center gap-0.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full transition-colors duration-300 ${isUp ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+        <span className="material-symbols-outlined text-[14px] leading-none">{isUp ? 'trending_up' : 'trending_down'}</span>
+        <span>{isUp ? '+' : '-'}{percent}%</span>
+      </div>
+      
+      {/* Tooltip */}
+      <div className={`absolute hidden group-hover:block z-[9999] w-48 animate-fade-in ${tooltipPositionClass} ${isActive ? '!block' : ''}`}>
+        <div className="bg-white/95 backdrop-blur-xl text-slate-900 text-[10px] p-3 rounded-xl shadow-2xl border border-slate-300">
+          <p className="font-black opacity-50 mb-2 uppercase tracking-[0.1em] text-[9px] border-b border-slate-100 pb-1.5">{label || 'So với kỳ trước'}</p>
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-slate-500 font-medium">Kỳ trước:</span>
+              <span className="font-black text-slate-700 text-[9px]">
+                {type === 'currency' ? formatCurrency(prevValue, true) : prevValue}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-slate-500 font-medium">Kỳ này:</span>
+              <span className={`font-black text-[9px] ${isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {type === 'currency' ? formatCurrency(currentValue, true) : currentValue}
+              </span>
+            </div>
+          </div>
+          <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center">
+            <span className="text-slate-400 italic">Tình trạng:</span>
+            <span className={`font-bold ${isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {isUp ? 'Tăng trưởng' : 'Giảm sút'}
+            </span>
+          </div>
+        </div>
+        {/* Mũi tên tooltip */}
+        <div className={`w-2 h-2 bg-white rotate-45 absolute top-2.5 shadow-sm ${arrowPositionClass}`}></div>
+      </div>
+    </div>
+  );
+};
+
+const StatCard = ({ label, value, growth, type = 'number', icon, color, rawValue, idx, activeTooltipIdx, setActiveTooltipIdx }) => {
+  const colorMap = {
+    blue: 'bg-blue-50 text-blue-600',
+    orange: 'bg-orange-50 text-orange-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    purple: 'bg-purple-50 text-purple-600'
+  };
+
+  return (
+    <div 
+      onClick={() => {
+        if (setActiveTooltipIdx) {
+          setActiveTooltipIdx(prev => prev === idx ? null : idx);
+        }
+      }}
+      className="stat-card-container relative bg-white rounded-xl shadow-[0_8px_20px_-3px_rgba(0,0,0,0.06)] border border-slate-300 hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 hover:z-30 transition-all duration-300 cursor-pointer group p-3 sm:p-4 lg:p-5 lg:rounded-2xl"
+    >
+      <div className="flex justify-between items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-slate-500 uppercase tracking-wider leading-tight mb-1 text-[9px] sm:text-[10px] lg:text-[11px]">{label}</p>
+          <div className={`font-black text-slate-900 mt-1 break-words whitespace-normal xl:truncate xl:whitespace-nowrap ${getResponsiveValueClass(value, rawValue)}`}>
+            {value}
+          </div>
+          <GrowthBadge 
+            growth={growth} 
+            type={type} 
+            currentValue={rawValue !== undefined ? rawValue : (typeof value === 'string' ? value.replace(/[^0-9]/g, '') : value)} 
+            idx={idx}
+            activeTooltipIdx={activeTooltipIdx}
+          />
+        </div>
+        <div className={`rounded-lg flex items-center justify-center shrink-0 transition-all group-hover:scale-110 w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9 ${colorMap[color]}`}>
+          <span className="material-symbols-outlined text-lg sm:text-xl lg:text-2xl">{icon}</span>
         </div>
       </div>
     </div>

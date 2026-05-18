@@ -257,10 +257,38 @@ const AccountingDashboard = () => {
 
             return (
               <>
-                <DashboardStat label="Tổng Doanh thu" value={formatCurrency(rawRev)} trend="+14.2%" isPositive={true} icon={RevenueIcon} color="text-blue-600" loading={loading} />
-                <DashboardStat label="Tổng Công nợ" value={formatCurrency(rawDebt)} trend="+2.4%" isPositive={false} icon={DebtIcon} color="text-amber-500" loading={loading} />
-                <DashboardStat label="Hóa đơn" value={stats?.pendingInvoices} trend="-4" isPositive={true} icon={InvoiceIcon} color="text-indigo-500" loading={loading} />
-                <DashboardStat label="Thực thu" value={formatCurrency(collectedValue)} trend="+5.12%" isPositive={true} icon={WalletIcon} color="text-emerald-500" loading={loading} />
+                <DashboardStat 
+                  label="Tổng Doanh thu" 
+                  value={formatCurrency(rawRev)} 
+                  growth={stats?.revenueGrowth} 
+                  icon={RevenueIcon} 
+                  color="text-blue-600" 
+                  loading={loading} 
+                />
+                <DashboardStat 
+                  label="Tổng Công nợ" 
+                  value={formatCurrency(rawDebt)} 
+                  growth={stats?.debtGrowth} 
+                  icon={DebtIcon} 
+                  color="text-amber-500" 
+                  loading={loading} 
+                />
+                <DashboardStat 
+                  label="Hóa đơn" 
+                  value={stats?.pendingInvoices} 
+                  growth={stats?.invoiceGrowth} 
+                  icon={InvoiceIcon} 
+                  color="text-indigo-500" 
+                  loading={loading} 
+                />
+                <DashboardStat 
+                  label="Thực thu" 
+                  value={formatCurrency(collectedValue)} 
+                  growth={stats?.collectedGrowth} 
+                  icon={WalletIcon} 
+                  color="text-emerald-500" 
+                  loading={loading} 
+                />
               </>
             );
           })()}

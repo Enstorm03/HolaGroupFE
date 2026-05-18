@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import dbData from '../../mockdata/db.json';
+import dbData from '../../../../../db.json';
 
 /**
  * ⚠️ Mẫu in TỔNG HỢP KẾ TOÁN PRO-MAX V4.5 (Multi-page Fix)
@@ -100,10 +100,13 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
         );
 
       default: // INVOICE
-        const total = detail.totalAmount || 0;
+        const items = detail.items || [];
+        const subtotal = items.reduce((sum, item) => sum + ((item.price || item.unitPrice || 0) * (item.quantity || 0)), 0);
+        const taxAmount = subtotal * 0.1;
+        const total = subtotal + taxAmount;
         const paid = detail.paidAmount || 0;
         const remaining = total - paid;
-        const percent = Math.min(100, Math.round((paid / total) * 100)) || 0;
+        
         return (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.5rem' }}>
@@ -160,13 +163,23 @@ const PrintableInvoiceTemplate = ({ detail, extendedData }) => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem' }}>
               <div style={{ padding: '1.5rem', border: '1px solid #edf2f7', borderRadius: '1.5rem' }}>
-                <span style={{ fontSize: '0.6rem', fontWeight: '900', color: '#94a3b8' }}>TRẠNG THÁI</span>
+                <span style={{ fontSize: '0.6rem', fontWeight: '900', color: '#94a3b8' }}>TIẾN ĐỘ THANH TOÁN</span>
                 <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', fontWeight: '700', whiteSpace: 'nowrap' }}>Đã thanh toán: {paid.toLocaleString()} VND</p>
                 <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', fontWeight: '700', color: '#e53e3e', whiteSpace: 'nowrap' }}>Còn lại: {remaining.toLocaleString()} VND</p>
               </div>
               <div style={{ padding: '1.5rem', border: '1px solid #edf2f7', borderRadius: '1.5rem', backgroundColor: '#f8fafc' }}>
-                <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: '900', color: '#94a3b8' }}>TỔNG CỘNG</p>
-                <p style={{ margin: '0.5rem 0 0 0', fontSize: '1.4rem', fontWeight: '900', color: '#00288E', whiteSpace: 'nowrap' }}>{total.toLocaleString()} VND</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: '700', color: '#64748b' }}>Tạm tính:</span>
+                  <span style={{ fontSize: '0.65rem', fontWeight: '700' }}>{subtotal.toLocaleString()} VND</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: '700', color: '#64748b' }}>VAT (10%):</span>
+                  <span style={{ fontSize: '0.65rem', fontWeight: '700' }}>{taxAmount.toLocaleString()} VND</span>
+                </div>
+                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '0.5rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.7rem', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase' }}>TỔNG CỘNG</p>
+                  <p style={{ margin: '0.3rem 0 0 0', fontSize: '1.4rem', fontWeight: '900', color: '#00288E', whiteSpace: 'nowrap' }}>{total.toLocaleString()} VND</p>
+                </div>
               </div>
             </div>
           </>

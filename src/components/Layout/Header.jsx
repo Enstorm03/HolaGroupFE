@@ -22,8 +22,8 @@ const Header = () => {
   };
 
   // Giá trị mặc định nếu chưa load được user hoặc chưa đăng nhập
-  const displayName = user ? `${user.firstName} ${user.lastName}` : 'Admin User';
-  const displayRole = user ? (user.role === 'admin' ? 'Quản trị viên' : 'Nhân viên') : 'Quản trị viên';
+  const displayName = user ? `${user.lastName} ${user.firstName}` : 'Admin User';
+  const displayRole = user ? user.roleName : 'Quản trị viên';
   const avatarInitial = user ? user.firstName.charAt(0) : 'A';
 
   return (

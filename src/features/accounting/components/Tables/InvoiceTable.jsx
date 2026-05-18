@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 
 const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = false }) => {
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'displayID', direction: 'desc' });
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -26,8 +26,9 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
           aValue = Number(a.orderID) || 0;
           bValue = Number(b.orderID) || 0;
         } else if (sortConfig.key === 'value') {
-          const aRemaining = (a.totalAmount || 0) - (a.paidAmount || 0);
-          const bRemaining = (b.totalAmount || 0) - (b.paidAmount || 0);
+          // Ưu tiên dùng field `remaining` đã tính sẵn từ service (có VAT)
+          const aRemaining = a.remaining ?? Math.max(0, (a.totalAmount || 0) - (a.paidAmount || 0));
+          const bRemaining = b.remaining ?? Math.max(0, (b.totalAmount || 0) - (b.paidAmount || 0));
           aValue = isCompleted ? (a.totalAmount || 0) : aRemaining;
           bValue = isCompleted ? (b.totalAmount || 0) : bRemaining;
         } else {
@@ -47,8 +48,15 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
         if (aValue > bValue) {
           return sortConfig.direction === 'asc' ? 1 : -1;
         }
-        return 0;
+
+        // Tie-breaker: ID (Số lớn hơn là mới hơn)
+        const idA = Number(a.invoiceID) || 0;
+        const idB = Number(b.invoiceID) || 0;
+        return sortConfig.direction === 'asc' ? idA - idB : idB - idA;
       });
+    } else {
+      // Sắp xếp mặc định theo ID DESC nếu key là null (phòng hờ)
+      sortableItems.sort((a, b) => (Number(b.invoiceID) || 0) - (Number(a.invoiceID) || 0));
     }
     return sortableItems;
   }, [invoices, sortConfig, isCompleted]);
@@ -85,8 +93,9 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
   };
 
   const totalValue = invoices.reduce((sum, inv) => {
-    const remaining = (inv.totalAmount || 0) - (inv.paidAmount || 0);
-    return sum + (isCompleted ? inv.totalAmount : remaining);
+    // Ưu tiên dùng field `remaining` đã tính sẵn từ service (bao gồm VAT)
+    const remaining = inv.remaining ?? Math.max(0, (inv.totalAmount || 0) - (inv.paidAmount || 0));
+    return sum + (isCompleted ? (inv.totalAmount || 0) : remaining);
   }, 0);
 
   return (
@@ -122,8 +131,11 @@ const InvoiceTable = ({ invoices, onSelect, selectedId, loading, isCompleted = f
           <tbody className="divide-y divide-slate-50">
             {sortedInvoices.map((invoice) => {
               const isSelected = selectedId === invoice.invoiceID;
-              const remaining = (invoice.totalAmount || 0) - (invoice.paidAmount || 0);
-              const displayValue = isCompleted ? invoice.totalAmount : remaining;
+              // Ưu tiên field `remaining` đã tính sẵn từ service (bao gồm VAT)
+              const remaining = invoice.remaining ?? Math.max(0, (invoice.totalAmount || 0) - (invoice.paidAmount || 0));
+              // Table "Đã quyết toán": hiển thị totalAmount (với VAT)
+              // Table "Chờ thu": hiển thị phần còn lại chưa thu (với VAT)
+              const displayValue = isCompleted ? (invoice.totalAmount || 0) : remaining;
 
               return (
                 <tr 
