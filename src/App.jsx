@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 import LoginPage from './features/auth/login';
@@ -12,6 +12,9 @@ import StaffManagement from './features/admin/pages/staffs/StaffManagement.jsx';
 import StaffCreate from './features/admin/pages/staffs/StaffCreate.jsx';
 import CategoryManagement from './features/admin/pages/category/CategoryManagement.jsx';
 import AddCategory from './features/admin/pages/category/AddCategory.jsx';
+import AdminProductManagement from './features/admin/pages/products/ProductManagement.jsx';
+import AdminAddProduct from './features/admin/pages/products/AddProduct.jsx';
+import AdminEditProduct from './features/admin/pages/products/EditProduct.jsx';
 
 // === MODULE SALES ===
 import SalesDashboard from './features/sales/pages/dashboard/SalesDashboard.jsx';
@@ -57,7 +60,9 @@ function App() {
         <Route index element={<AdminDashboard />} />
         <Route path="staffs" element={<StaffManagement />} />
         <Route path="staffs/add" element={<StaffCreate />} />
-        <Route path="products" element={<ProductManagement />} />
+        <Route path="products" element={<AdminProductManagement />} />
+        <Route path="products/add" element={<AdminAddProduct />} />
+        <Route path="products/edit/:id" element={<AdminEditProduct />} />
         <Route path="categories" element={<CategoryManagement />} />
         <Route path="categories/add" element={<AddCategory />} />
       </Route>

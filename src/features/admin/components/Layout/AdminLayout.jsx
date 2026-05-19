@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import Header from '../../../../components/Layout/Header';
@@ -38,7 +38,7 @@ const AdminLayout = () => {
         </div>
 
         <main className="flex-1 overflow-hidden relative bg-slate-50"> 
-          <div className="absolute inset-0 flex flex-col overflow-hidden px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-5 lg:max-w-[120rem] mx-auto w-full">
+          <div className="absolute inset-0 flex flex-col overflow-auto px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-5 lg:max-w-[120rem] mx-auto w-full">
             <Outlet />
           </div>
         </main>
